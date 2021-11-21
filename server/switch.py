@@ -1,3 +1,5 @@
+# This module acts as the Model (database) by storing the intended state of the Raspberry Pi's pins.
+
 class Board():
 	'''
 	The Board class represents the GPIO pins located on the Raspberry Pi Server.
@@ -10,7 +12,7 @@ class Board():
 		3:[13,15],
 		4:[19,21],
 		5:[23,29],
-		6:[31,33],
+		6:[33,31], # This is the sensor/relay pair used for testing
 		7:[37,35],
 		8:[12,16],
 		9:[18,22],
@@ -61,6 +63,12 @@ class Relay():
 		self.sensor_value = 0
 		self.reboot_enabled = False
 
+		# Toggle mode variables
+		self.toggle_enabled = False # specifies whether the relay is in a toggle state.
+		self.toggle_time_milliseconds = 100 # specifies the time it takes to switch the relay to on (closed) and off (open), in milliseconds.  
+		self.toggle_time_start = float(-1) # records down the time that a toggle was triggered, in milliseconds
+
+
 	# Accessor methods
 	def get_relay_value(self): return self.relay_value
 	def get_relay_pin(self): return self.pin_relay
@@ -68,6 +76,9 @@ class Relay():
 	def get_name(self): return self.name
 	def get_sensor_value(self): return self.sensor_value
 	def get_reboot_enabled(self): return self.reboot_enabled
+	def get_toggle_time(self): return self.toggle_time_milliseconds
+	def get_toggle_enabled(self): return self.toggle_enabled
+	def get_toggle_time_start_milliseconds(self): return self.toggle_time_start
 
 	# Modifier methods
 	def set_name(self, name): self.name = name
@@ -76,6 +87,10 @@ class Relay():
 	def set_sensor_pin(self, pin): self.pin_sensor = pin
 	def set_sensor_value(self,sensor_value): self.sensor_value = sensor_value
 	def set_reboot(self, mode): self.reboot_enabled = mode
+	def set_toggle_time(self, toggle_time_milliseconds): self.toggle_time_milliseconds = toggle_time_milliseconds
+	def set_toggle(self, toggle_enabled): self.toggle_enabled = toggle_enabled
+	def set_toggle_time_start_milliseconds(self, toggle_time_start): self.toggle_time_start = toggle_time_start
+
 
 if __name__ == "__main__":
 	print("Unit testing only:\n")
