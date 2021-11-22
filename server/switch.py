@@ -65,9 +65,8 @@ class Relay():
 
 		# Toggle mode variables
 		self.toggle_enabled = False # specifies whether the relay is in a toggle state.
-		self.toggle_time_milliseconds = 100 # specifies the time it takes to switch the relay to on (closed) and off (open), in milliseconds.  
+		self.toggle_time_milliseconds = 1000 # specifies the time it takes to switch the relay to on (closed) and off (open), in milliseconds.  
 		self.toggle_time_start = float(-1) # records down the time that a toggle was triggered, in milliseconds
-
 
 	# Accessor methods
 	def get_relay_value(self): return self.relay_value

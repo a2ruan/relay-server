@@ -21,7 +21,7 @@ class Controller(Resource):
 		if command == "status":
 			print("\nUser requested switchboard state")
 			update_pins(sb)
-			return sb.get_switches_as_dict()
+			return jsonify(sb.get_switches_as_dict())
 		elif command == "update":
 			print("\nUpdating pins")
 			for i in sb.get_switches():
@@ -111,27 +111,34 @@ def update_pins(board):
 		relay_value = switch.get_relay_value()
 		sensor_pin = switch.get_sensor_pin()
 		toggle_enabled = switch.get_toggle_enabled()
-		#print("CYCLE" + str(counter_clock) + ": INSTANCE NUM =" + str(instancenum))
+		reboot_enabled = switch.get_reboot_enabled()
 		# Check if toggle mode is on for the first time
+
 		if toggle_enabled:
-			#print("CYCLE" + str(counter_clock) + ": INSTANCE NUM =" + str(instancenum))
 			toggle_time_start = float(switch.get_toggle_time_start_milliseconds()) # putting inside if statement to reduce lag by specifying precondition
 			toggle_time_milliseconds = float(switch.get_toggle_time())
-			print("toggle elapsed time:" + str(time.time()*1000 - toggle_time_start))
 
-			if toggle_time_start < float(0):
-				#print("CYCLE" + str(counter_clock) + ": INSTANCE NUM =" + str(instancenum))
+			# PULSE SEQUENCING FOR TOGGLING A BUTTON
+			# STAGE 1: BETWEEN 0 ~ toggle_time = OFF
+			# STAGE 2: BETWEEN toggle_time and 2*toggle_time = ON
+			# STAGE 3: AFTER toggle_time = OFF
+			current_time = time.time()*1000
+			
+			if toggle_time_start <= float(0): # STAGE 1
 				switch.set_toggle_time_start_milliseconds(time.time()*1000) 
-				switch.set_relay_value(1)
-				print("toggle starting ---------------------------------------------------:" + str(relay_pin) + " and toggle time was set to " + str(switch.get_toggle_time_start_milliseconds()))
-		
-			elif (time.time()*1000 - toggle_time_start) > toggle_time_milliseconds:
-				#print("CYCLE" + str(counter_clock) + ": INSTANCE NUM =" + str(instancenum))
+				switch.set_relay_value(0)
+				#print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+			elif (current_time - toggle_time_start) < toggle_time_milliseconds: 
+				switch.set_relay_value(0)# STAGE 1
+				#print("B")
+			elif (current_time - toggle_time_start) >= toggle_time_milliseconds and (current_time - toggle_time_start) < 2*toggle_time_milliseconds: 
+				switch.set_relay_value(1) 
+				#print("C")# STAGE 2
+			elif (current_time - toggle_time_start) >= 2*toggle_time_milliseconds: # STAGE 3
+				#print("D")
 				switch.set_toggle(False)
 				switch.set_toggle_time_start_milliseconds(float(-1))
 				switch.set_relay_value(0)
-				print("toggle ending")
-				print(time.time())
 
 		# Update relay state to device
 		if relay_value == 1:
@@ -139,15 +146,13 @@ def update_pins(board):
 		elif relay_value == 0:
 			set_pin(relay_pin,0)
 
-		if relay_pin == 33:
-			print("relay value=" + str(relay_value))
-
-
-
 		# Read and update sensor value from device
 		sensor_value = get_pin(sensor_pin)
-		#print(str(sensor_pin) + ":" + str(sensor_value))
 		switch.set_sensor_value(sensor_value)
+		#print("sensor value = " + str(sensor_value))
+		if reboot_enabled and sensor_value < 0.5: # check if auto mode is on.  Auto mode on means that toggle should continously run if system is off.
+			switch.set_toggle(True)
+			print("auto")
 
 
 
@@ -164,8 +169,6 @@ def init_webserver(board):
 		#now = datetime.now()
 		#current_time = now.strftime("%d/%m/%Y %H:%M:%S")
 		#print("Current Time", current_time)
-		#print(time.time()) #time in seconds since epoch.
-		#print("CYCLE" + str(counter_clock) + ": INSTANCE NUM =" + str(instancenum))
 		update_pins(board) # update GPIO states
 
 if __name__ == "__main__":
@@ -185,4 +188,4 @@ if __name__ == "__main__":
 	api.add_resource(Controller,'/<string:command>') # REST calls for entire board
 	api.add_resource(ControllerNode,'/<string:relay_name>/<string:command>') # REST calls for specific pins
 	print("Starting REST API server")
-	app.run(host='0.0.0.0', port = 5000,debug=False, threaded=True) # 0.0.0.0 means localhost on machine that the script is running on.
+	app.run(host='0.0.0.0', port = 5000,debug=False, threaded=True, use_reloader=False) # 0.0.0.0 means localhost on machine that the script is running on.
