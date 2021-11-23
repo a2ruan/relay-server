@@ -35,7 +35,7 @@ class Board():
 			switch_name = switch.get_name()
 			switch_dict[switch_name] = {
 				#"RELAY_NAME":"RELAY_" + '0'*(2-len(str(switch_name)))+str(switch_name),
-				"NAME":str(switch_name),
+				"PRIMARY_KEY":str(switch_name),
 				"RELAY_PIN":switch.get_relay_pin(),
 				"RELAY_VALUE":switch.get_relay_value(),
 				"SENSOR_PIN":switch.get_sensor_pin(),
@@ -89,17 +89,3 @@ class Relay():
 	def set_toggle_time(self, toggle_time_milliseconds): self.toggle_time_milliseconds = toggle_time_milliseconds
 	def set_toggle(self, toggle_enabled): self.toggle_enabled = toggle_enabled
 	def set_toggle_time_start_milliseconds(self, toggle_time_start): self.toggle_time_start = toggle_time_start
-
-
-if __name__ == "__main__":
-	print("Unit testing only:\n")
-
-	sb = Board("RPI-1")
-	print("SwitchBoard Name: " + sb.get_name())
-	#sb.set_default_switches()
-	switches = sb.get_switches()
-	print(len(switches))
-	print(switches[0].get_name() + "\n\n\n")
-	print(sb.get_switches_as_dict())
-	#print(sb.__dict__)
-	input("\nPress any key to exit...")

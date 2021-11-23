@@ -1,0 +1,36 @@
+<html>
+<style>
+    table, th, td {
+        border:1px solid black;
+    }
+</style>
+
+<body>
+<h3>Relay Configuration Table</h3>
+<table>
+<tr>
+    <th>PRIMARY_KEY</th>
+    {% for value in switch_states["1"].items() %}
+        {% if value[0] != "PRIMARY_KEY"%}
+            <td>{{value[0]}}</td>
+        {% endif %}
+    {% endfor %}
+<tr>
+
+{% for relay in switch_states%}
+<tr>    
+    {% for value in switch_states[relay].items()%}
+        {% if value[0] == "PRIMARY_KEY"%}
+            <td>{{value[1]}}</td>>
+        {% endif %}
+    {% endfor %}
+    {% for value in switch_states[relay].items() %}
+        {% if value[0] != "PRIMARY_KEY"%}
+            <td>{{value[1]}}</td>
+        {% endif %}
+    {% endfor %}
+<tr>
+{% endfor %}
+</table>
+</body>
+</html>  

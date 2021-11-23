@@ -13,24 +13,21 @@ from datetime import datetime
 from switch import * # Import board state to keep track of user inputs, outputs ect.
 from gpio import * # Import pin I/O module to directly read/write to GPIO pins
 
-CLOCK_RATE_SECONDS = 0.01 
+CLOCK_RATE_SECONDS = 0.01 # this indicates that the GPIO pins on the Raspberry Pi should be updated every 10ms
+
+app = Flask(__name__)
 
 class Controller(Resource):
 	def get(self, command):
 		print(command)
-		if command == "status":
+		if command == "status1":
 			print("\nUser requested switchboard state")
 			update_pins(sb)
 			return jsonify(sb.get_switches_as_dict())
-		elif command == "update":
-			print("\nUpdating pins")
-			for i in sb.get_switches():
-				i.set_relay_value(1)
-
-			return sb.get_switches_as_dict()
 		return {"data":"Invalid Entry"}
 
 class ControllerNode(Resource):
+	@app.route('/')
 	def get(self, relay_name, command):
 		print(command)
 		print(relay_name)
@@ -84,9 +81,14 @@ class ControllerNode(Resource):
 				if switch.get_name() == relay_name: switch.set_reboot(False)
 			time.sleep(CLOCK_RATE_SECONDS*10)
 			return sb.get_switches_as_dict()[relay_name]
-		
 
 		return {"data":"Invalid Entry"}
+
+@app.route('/status')
+def render():
+	switch_states = sb.get_switches_as_dict()
+	return render_template('template.html',switch_states=switch_states)
+
 
 def init_pins(): # Initialize relay and sensor pins to default values
 	for i in Board.switch_pair_map:
@@ -99,12 +101,9 @@ def init_pins(): # Initialize relay and sensor pins to default values
 
 def update_pins(board):
 	'''
-	Step 1: Read sensor pins 
-	Step 2: Write sensor pin values to Board object
-	Step 3: Read intended relay values from Board object
-	Step 4: Write relay values to relay pins
-	'''
+	Updates the GPIO pins by reading the user-defined Board state and writing the changes to hardware.
 
+	'''
 	for switch in board.get_switches(): # iterate through each switch pair
 		# Read pin id and relay state
 		relay_pin = switch.get_relay_pin()
@@ -112,9 +111,8 @@ def update_pins(board):
 		sensor_pin = switch.get_sensor_pin()
 		toggle_enabled = switch.get_toggle_enabled()
 		reboot_enabled = switch.get_reboot_enabled()
-		# Check if toggle mode is on for the first time
 
-		if toggle_enabled:
+		if toggle_enabled: # Check if toggle mode is on for the first time
 			toggle_time_start = float(switch.get_toggle_time_start_milliseconds()) # putting inside if statement to reduce lag by specifying precondition
 			toggle_time_milliseconds = float(switch.get_toggle_time())
 
@@ -127,7 +125,6 @@ def update_pins(board):
 			if toggle_time_start <= float(0): # STAGE 1
 				switch.set_toggle_time_start_milliseconds(time.time()*1000) 
 				switch.set_relay_value(0)
-				#print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
 			elif (current_time - toggle_time_start) < toggle_time_milliseconds: 
 				switch.set_relay_value(0)# STAGE 1
 				#print("B")
@@ -152,7 +149,6 @@ def update_pins(board):
 		#print("sensor value = " + str(sensor_value))
 		if reboot_enabled and sensor_value < 0.5: # check if auto mode is on.  Auto mode on means that toggle should continously run if system is off.
 			switch.set_toggle(True)
-			print("auto")
 
 
 
@@ -183,7 +179,6 @@ if __name__ == "__main__":
 	server.start()
 
 	# Initialize Flask webserver to recieve REST API calls
-	app = Flask(__name__)
 	api = Api(app)
 	api.add_resource(Controller,'/<string:command>') # REST calls for entire board
 	api.add_resource(ControllerNode,'/<string:relay_name>/<string:command>') # REST calls for specific pins
