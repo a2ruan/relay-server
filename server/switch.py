@@ -12,22 +12,30 @@ class Board():
 		3:[13,15],
 		4:[19,21],
 		5:[23,29],
-		6:[33,31], # This is the sensor/relay pair used for testing
+		1:[33,31], # This is the sensor/relay pair used for testing
 		7:[37,35],
 		8:[12,16],
 		9:[18,22],
 		10:[24,26],
-		1:[32,36],
+		6:[32,36],
 		12:[38,40]
 	}
 
 	def __init__(self,name):
 		self.name = name
 		self.switches = []
+		self.history_headers = ['DATE','TIME','IP','RELAY_GROUP','ACTION']
+		self.history = [] # A history of all REST calls/updates
+		self.max_history_size = 10000
 		self.set_default_switches()
 
 	def get_name(self): return self.name
 	def get_switches(self): return self.switches
+	def get_history(self): return self.history
+	def get_history_headers(self): return self.history_headers
+	def get_max_history_size(self): return self.max_history_size
+
+	def set_max_history_size(self,max_history_size): self.max_history_size = max_history_size 
 
 	def get_switches_as_dict(self):
 		switch_dict = {}
@@ -40,6 +48,7 @@ class Board():
 				"RELAY_VALUE":switch.get_relay_value(),
 				"SENSOR_PIN":switch.get_sensor_pin(),
 				"AUTO_REBOOT":switch.get_reboot_enabled(),
+				"TOGGLE_TIME_MILLIS":switch.get_toggle_time(),
 				"SENSOR_VALUE":switch.get_sensor_value()}
 
 		return switch_dict
@@ -48,6 +57,12 @@ class Board():
 		for i in range(1,13): # Sets pins defaults from [1-12] inclusive
 			switch_pair = Relay(self.switch_pair_map[i][0],self.switch_pair_map[i][1], str(i))
 			self.switches.append(switch_pair)
+
+	def add_to_history(self,date,time,ip,relay_group_name,action):
+		if len(self.history) >= self.max_history_size:
+			self.history = self.history[1:]
+
+		self.history.append([date,time,ip,relay_group_name,action])
 
 class Relay():
 	'''
@@ -65,7 +80,7 @@ class Relay():
 
 		# Toggle mode variables
 		self.toggle_enabled = False # specifies whether the relay is in a toggle state.
-		self.toggle_time_milliseconds = 1000 # specifies the time it takes to switch the relay to on (closed) and off (open), in milliseconds.  
+		self.toggle_time_milliseconds = 150 # specifies the time it takes to switch the relay to on (closed) and off (open), in milliseconds.  
 		self.toggle_time_start = float(-1) # records down the time that a toggle was triggered, in milliseconds
 
 	# Accessor methods

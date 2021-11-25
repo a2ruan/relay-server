@@ -20,7 +20,7 @@ app = Flask(__name__)
 class Controller(Resource):
 	def get(self, command):
 		print(command)
-		if command == "status1":
+		if command == "status-dict":
 			print("\nUser requested switchboard state")
 			update_pins(sb)
 			return jsonify(sb.get_switches_as_dict())
@@ -31,6 +31,8 @@ class ControllerNode(Resource):
 	def get(self, relay_name, command):
 		print(command)
 		print(relay_name)
+		sb.add_to_history(get_date(),get_time(),request.remote_addr,relay_name,command)
+		print(sb.get_history())
 		if command == "status":
 			print("\nUser requested relay " + relay_name + " state")
 			time.sleep(CLOCK_RATE_SECONDS*10)
@@ -60,6 +62,18 @@ class ControllerNode(Resource):
 			time.sleep(CLOCK_RATE_SECONDS*10)
 			return sb.get_switches_as_dict()[command]
 
+		elif command.find('toggle-time=') == 0:
+			if command[12:].isdigit():
+				toggle_time = int(command[12:])
+				for switch in sb.get_switches():
+					if switch.get_name() == relay_name: 
+						print("Setting new toggle time:" + str(toggle_time))
+						switch.set_toggle_time(toggle_time)
+			else:
+				print("Entry not a number")
+			time.sleep(CLOCK_RATE_SECONDS*10)
+			return sb.get_switches_as_dict()[relay_name]
+
 		elif command == 'toggle': # TBD
 			for switch in sb.get_switches():
 				if switch.get_name() == relay_name: 
@@ -83,12 +97,36 @@ class ControllerNode(Resource):
 			return sb.get_switches_as_dict()[relay_name]
 
 		return {"data":"Invalid Entry"}
+	
+	@app.route('/')
+	def post(self, relay_name, command):
+		print(self.get(relay_name,command))
+
 
 @app.route('/status')
-def render():
+def render_status_table():
 	switch_states = sb.get_switches_as_dict()
-	return render_template('template.html',switch_states=switch_states)
+	return render_template('status_template.html',switch_states=switch_states)
 
+@app.route('/history')
+def render_history_table():
+	history_ref = sb.get_history()
+	history = history_ref[:]
+	history.reverse()
+	history_headers = sb.get_history_headers()
+	return render_template('history_template.html',history=history, headers=history_headers)
+
+def get_time(): # Returns time as a string
+	now = datetime.now()
+	return now.strftime("%H:%M:%S")
+
+def get_date(): # Returns time as a string
+	now = datetime.now()
+	return now.strftime("%d/%m/%Y")
+
+@app.route("/get_my_ip", methods=["GET"])
+def get_my_ip():
+    return jsonify({'ip': request.remote_addr}), 200
 
 def init_pins(): # Initialize relay and sensor pins to default values
 	for i in Board.switch_pair_map:

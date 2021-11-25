@@ -1,0 +1,26 @@
+<html>
+<style>
+    table, th, td {
+        border:1px solid black;
+    }
+</style>
+
+<body>
+<h3>REST API Calls History</h3>
+<table>
+<tr>
+    {% for value in headers %}
+        <td>{{value}}</td>
+    {% endfor %}
+<tr>
+
+{% for row in history%}
+<tr>    
+    {% for data in row %}
+        <td>{{data}}</td>
+    {% endfor %}
+<tr>
+{% endfor %}
+</table>
+</body>
+</html>  
