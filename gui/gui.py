@@ -13,19 +13,30 @@ from PyQt5 import QtCore
 import requests
 import threading
 from requests.models import Response
-headers = ['IP Address','Port Number','Host Name']
+headers = ['IP Address','Port Number','Host Name','Open','Delete']
 data = [
     ["10.6.193.227", "5000", "SYSC-PI-1"],
     ["10.6.131.227", "5000", "SYSC-PI-2"],
-    ["10.6.193.127", "5000", "SYSC-PI-3"],
+    ["10.6.193.127", "5600", "SYSC-PI-3"],
     ["10.6.131.137", "5000", "SYSC-PI-4"],
-    ["10.6.131.108", "5000", "SYSC-PI-5"],
+    ["10.6.131.123", "5000", "SYSC-PI-5"],
+    ["10.6.131.138", "5700", "SYSC-PI-5"],
+    ["10.6.131.138", "5000", "SYSC-PI-5"],
+    ["10.6.131.18", "5060", "SYSC-PI-5"],
+    ["10.6.131.128", "5000", "SYSC-PI-5"],
+    ["10.6.131.178", "5200", "SYSC-PI-5"],
+    ["10.6.131.198", "5000", "SYSC-PI-5"],
+    ["10.6.131.138", "5300", "SYSC-PI-5"],
+    ["10.6.131.158", "5000", "SYSC-PI-5"],
+    ["10.6.131.138", "5600", "SYSC-PI-5"],
+    ["10.6.131.128", "5400", "SYSC-PI-5"],
+    ["10.6.131.198", "5100", "SYSC-PI-5"],
+    ["10.6.131.100", "5200", "SYSC-PI-5"]
 ]
-
 
 class Widget(QMainWindow):
     #Global constants
-    WINDOW_WIDTH = 1200
+    WINDOW_WIDTH = 800
     WINDOW_HEIGHT = 600
     WINDOW_MARGIN = 130
     LINE_THICKNESS = 2
@@ -97,7 +108,6 @@ class Widget(QMainWindow):
         painter.setPen(Qt.gray)
 
 class MyTableWidget(QWidget):
-    
     def __init__(self, parent):
         super(QWidget, self).__init__(parent)
         self.layout_primary = QVBoxLayout(self)
@@ -105,7 +115,6 @@ class MyTableWidget(QWidget):
         # Tab Structure
         self.tabs = QTabWidget()
         self.tab_devices = QWidget()
-        self.tab_tutorials = QWidget()
     
         # Add tabs to widget
         self.layout_primary.addWidget(self.tabs)
@@ -113,12 +122,21 @@ class MyTableWidget(QWidget):
     
         # Add tabs
         self.tabs.addTab(self.tab_devices,"Devices List")
-        #self.tabs.addTab(self.tab_tutorials,"Tutorial")
-        
+        #self.tab_device_utility.setDisabled(True)
+
+        # Enable close buttons on all but first
+        self.tabs.setTabsClosable(True)
+        self.tabs.tabCloseRequested.connect(self.tabs.removeTab)
+        default_side = self.tabs.style().styleHint(QStyle.SH_TabBar_CloseButtonPosition, None, self.tabs.tabBar())
+        self.tabs.tabBar().setTabButton(0, default_side, None)
+
         # Editable fields
         self.field_ip_address = QLineEdit(self)
         self.field_port_number = QLineEdit(self)
+        self.field_port_number.setText("5000")
         self.field_host_name = QLineEdit(self)
+        self.field_host_name.setText("Automatic Detection")
+        self.field_host_name.setEnabled(False)
 
         # Display labels
         self.label_ip_address = QLabel(self)
@@ -127,17 +145,10 @@ class MyTableWidget(QWidget):
         self.label_port_number.setText("Port Number:")
         self.label_host_name = QLabel(self)
         self.label_host_name.setText("Host Name:")
-
+        
         # Buttons
         self.btn_add_device = QPushButton()
-        self.btn_add_device.setText("Add Device to List")
-
-        # Device List Table
-        self.device_table = QTableView() 
-        self.device_table.setSelectionBehavior(QTableView.SelectRows) # Select by row
-        self.device_table.verticalHeader().setVisible(False) # Hide row numbers
-        self.model = TableModel(data,headers)
-        self.device_table.setModel(self.model)
+        self.btn_add_device.setText("Add to List")
 
         ### Devices List Tab Structure
         self.tab_devices.layout = QGridLayout(self)
@@ -153,52 +164,83 @@ class MyTableWidget(QWidget):
         # Row 2
         self.tab_devices.layout.addWidget(self.btn_add_device,1,0,1,1)
         # Row 3
-        self.header_policy = self.device_table.horizontalHeader()
-        self.header_policy.setSectionResizeMode(QHeaderView.Stretch)
-        self.tab_devices.layout.addWidget(self.device_table,2,0,2,6)
+        self.tableWidget = QTableWidget()
+        self.update_table()
+        
+    def update_table(self):
+            self.tableWidget.verticalHeader().setVisible(False)
+            self.tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)    
+            self.tableWidget.setSelectionMode(QAbstractItemView.SingleSelection)
+            self.tableWidget.setFocusPolicy(Qt.NoFocus);          
+            #Row count
+            self.tableWidget.setRowCount(len(data)) 
+            self.COLUMN_COUNT = 5
+            self.tableWidget.setColumnCount(self.COLUMN_COUNT)  
 
-class TableModel(QAbstractTableModel):
-    def __init__(self, data, titles):
-        super(TableModel, self).__init__()
-        self._data = data
-        self.horizontalHeaders = titles
+            # STYLING
+            self.tableWidget.setStyleSheet("selection-background-color: #ECECEC; \
+            selection-color: #000000;");
 
-        for i,header in enumerate(self.horizontalHeaders):
-            self.setHeaderData(i, Qt.Horizontal, header)
+            for i, header in enumerate(headers):
+                header_text = QTableWidgetItem()
+                header_text.setText(header)
+                self.tableWidget.setHorizontalHeaderItem(i,header_text)
+            for i, row in enumerate(data):
+                for j, value in enumerate(row): self.tableWidget.setItem(i,j, QTableWidgetItem(value))
+            for row in range(len(data)): self.add_button(row,self.COLUMN_COUNT-2,"Open", self.open_device)
+            for row in range(len(data)): self.add_button(row,self.COLUMN_COUNT-1,"Delete", self.delete_row)
+            
+            headerView = QHeaderView(QtCore.Qt.Horizontal, self.tableWidget)
+            self.tableWidget.setHorizontalHeader(headerView)
+            headerView.setSectionResizeMode(2, QHeaderView.Stretch)
+            headerView.setSectionsClickable(True)
 
-    def setHeaderData(self, section, orientation, data, role=Qt.EditRole):
-        if orientation == Qt.Horizontal and role in (Qt.DisplayRole, Qt.EditRole):
-            try:
-                self.horizontalHeaders[section] = data
-                return True
-            except:
-                return False
-        return super().setHeaderData(section, orientation, data, role)
+            self.tableWidget.setColumnWidth(self.COLUMN_COUNT-2, 60);
+            self.tableWidget.setColumnWidth(self.COLUMN_COUNT-1, 60);
 
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            try:
-                return self.horizontalHeaders[section]
-            except:
-                pass
-        return super().headerData(section, orientation, role)
+            self.tab_devices.layout.addWidget(self.tableWidget,2,0,2,6)
+    
+    def delete_row(self):
+        print("Deleting row")
+        print("Opening Device")
+        index=(self.tableWidget.selectionModel().currentIndex())
+        print(index.row()) # note: the row is index starting from 0
+        data.pop(index.row())
+        self.tableWidget.removeRow(index.row())
+        print(data)
+
+    def add_row(self,ip,port,host_name):
+        print("Adding device")
+        data.append([ip,port,host_name])
+        self.tableWidget.setRowCount(len(data)) 
+        for i, row in enumerate(data):
+                for j, value in enumerate(row): 
+                    self.tableWidget.setItem(i,j, QTableWidgetItem(value))
+        self.add_button(len(data),self.COLUMN_COUNT-2,"Open", self.open_device)
+        self.add_button(len(data),self.COLUMN_COUNT-1,"Delete", self.delete_row)
+
+    def add_button(self,row,column,text, target):
+        btn_delete = QPushButton()
+        btn_delete.setText(text)
+        btn_delete.clicked.connect(target)
+        #btn_delete.setStyleSheet("background-color : #FF605C")
+        self.tableWidget.setCellWidget(row, column, btn_delete)
+        
+    def open_device(self):
+        print("Opening Device")
+        index=(self.tableWidget.selectionModel().currentIndex())
+        print(index.row()) # note: the row is index starting from 0
+        
 
 
-    def data(self, index, role):
-        if role == Qt.DisplayRole:
-            # See below for the nested-list data structure.
-            # .row() indexes into the outer list,
-            # .column() indexes into the sub-list
-            return self._data[index.row()][index.column()]
 
-    def rowCount(self, index):
-        # The length of the outer list.
-        return len(self._data)
 
-    def columnCount(self, index):
-        # The following takes the first sub-list, and returns
-        # the length (only works if all rows are an equal length)
-        return len(self._data[0])
+
+
+
+class DeviceUtility(QTabWidget):
+    def __init__(self):
+        pass
 
 
 
