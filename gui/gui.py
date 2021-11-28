@@ -32,6 +32,23 @@ data = [
     ["10.6.131.100", "5000", "SYSC-PI-17"]
 ]
 
+'''
+device_utility_headers = ['Relay Group', 'Relay Status','Close','Open', 'Toggle','Auto Mode','Toggle Time','Computer Status','Description']
+relay_state = [
+    ["1", "Open", "Close",'Open','Toggle','OFF','100','ONLINE','Description'],
+    ["2", "Open", "Close",'Open','Toggle','OFF','100','ONLINE','Description'],
+    ["3", "Open", "Close",'Open','Toggle','OFF','100','ONLINE','Description'],
+    ["4", "Open", "Close",'Open','Toggle','OFF','100','ONLINE','Description'],
+    ["5", "Open", "Close",'Open','Toggle','OFF','100','ONLINE','Description'],
+    ["6", "Open", "Close",'Open','Toggle','OFF','100','ONLINE','Description'],
+    ["7", "Open", "Close",'Open','Toggle','OFF','100','ONLINE','Description'],
+    ["8", "Open", "Close",'Open','Toggle','OFF','100','ONLINE','Description'],
+    ["9", "Open", "Close",'Open','Toggle','OFF','100','ONLINE','Description'],
+    ["10", "Open", "Close",'Open','Toggle','OFF','100','ONLINE','Description'],
+    ["11", "Open", "Close",'Open','Toggle','OFF','100','ONLINE','Description'],
+    ["12", "Open", "Close",'Open','Toggle','OFF','100','ONLINE','Description']
+]
+'''
 # This class is the main window for the GUI
 class Widget(QMainWindow):
     #Global constants
@@ -83,9 +100,8 @@ class TabGroup(QWidget):
         self.tabs = QTabWidget(self)
         self.tab_devices = QWidget(self)
         self.tabs.addTab(self.tab_devices,"Devices List")
-        #self.tab_device_utility.setDisabled(True)
-
-        self.single_tabs = []
+        self.tab_device_utility = QWidget(self)
+        self.tabs.addTab(self.tab_device_utility,"Device Utility")
     
         # Add tabs to widget
         self.layout_primary = QVBoxLayout(self)
@@ -97,6 +113,10 @@ class TabGroup(QWidget):
         self.tabs.tabCloseRequested.connect(self.tabs.removeTab)
         default_side = self.tabs.style().styleHint(QStyle.SH_TabBar_CloseButtonPosition, None, self.tabs.tabBar())
         self.tabs.tabBar().setTabButton(0, default_side, None)
+
+        ## Tab 1: Devices List Tab Structure
+        self.tab_devices.layout = QGridLayout(self)
+        self.tab_devices.setLayout(self.tab_devices.layout)
 
         # QLineEdit fields
         self.field_ip_address = QLineEdit(self)
@@ -115,13 +135,11 @@ class TabGroup(QWidget):
         self.label_host_name.setText("Host Name:")
         
         # Buttons
-        self.btn_add_device = QPushButton()
+        self.btn_add_device = QPushButton(self)
         self.btn_add_device.setText("Add to List")
         self.btn_add_device.clicked.connect(self.add_device)
 
-        ## Tab 1: Devices List Tab Structure
-        self.tab_devices.layout = QGridLayout(self)
-        self.tab_devices.setLayout(self.tab_devices.layout)
+        # Table Layout
         # Row 1
         self.tab_devices.layout.addWidget(self.label_ip_address,0,0)
         self.tab_devices.layout.addWidget(self.field_ip_address,0,1)
@@ -133,43 +151,144 @@ class TabGroup(QWidget):
         self.tab_devices.layout.addWidget(self.btn_add_device,1,0,1,1)
         # Row 3
         self.table_widget = QTableWidget(self)
-        self._update_table()
+        self.update_device_table()
+        '''
+        ## Tab 2: Devices Utility Tab Structure
+        self.tab_device_utility.layout = QGridLayout(self)
+        self.tab_device_utility.setLayout(self.tab_device_utility.layout)
+
+        # QLineEdit fields
+        self.field_utility_ip_address = QLineEdit(self)
+        self.field_utility_port_number = QLineEdit(self)
+        self.field_utility_port_number.setText("5000")
+        self.field_utility_host_name = QLineEdit(self)
+        self.field_utility_host_name.setText("Automatic Detection")
+        self.field_utility_host_name.setEnabled(False)
+
+        # QLabel labels
+        self.label_utility_ip_address = QLabel(self)
+        self.label_utility_ip_address.setText("IP Address:")
+        self.label_utility_port_number = QLabel(self)
+        self.label_utility_port_number.setText("Port Number:")
+        self.label_utility_host_name = QLabel(self)
+        self.label_utility_host_name.setText("Host Name:")
+
+        # Button
+        self.btn_connect_device = QPushButton(self)
+        self.btn_connect_device.setText("Connect to Device")
+        self.btn_connect_device.clicked.connect(self.connect_device)
+
+        # Table
+        # Row1
+        self.tab_device_utility.layout.addWidget(self.label_utility_ip_address,0,0)
+        self.tab_device_utility.layout.addWidget(self.field_utility_ip_address,0,1)
+        self.tab_device_utility.layout.addWidget(self.label_utility_port_number,0,2)
+        self.tab_device_utility.layout.addWidget(self.field_utility_port_number,0,3)
+        self.tab_device_utility.layout.addWidget(self.label_utility_host_name,0,4)
+        self.tab_device_utility.layout.addWidget(self.field_utility_host_name,0,5)
+        # Row 2
+        self.tab_device_utility.layout.addWidget(self.btn_connect_device,1,0,1,1)
+        # Row 3
+        self.device_utility_table_widget = QTableWidget(self)
+        self.tab_device_utility.layout.addWidget(self.device_utility_table_widget,2,0,2,6)
+        self.update_relay_table()
+        '''
+    '''
+    def update_relay_table(self):
+        print("A")
+        self.device_utility_table_widget.verticalHeader().setVisible(False)
+        self.device_utility_table_widget.setSelectionBehavior(QAbstractItemView.SelectRows)    
+        self.device_utility_table_widget.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.device_utility_table_widget.setFocusPolicy(Qt.NoFocus);  
+        self.device_utility_table_widget.setEditTriggers(QTableWidget.NoEditTriggers) # MAKE CELLS READ ONLY
+        print("B")
+        self.device_utility_table_widget.setRowCount(len(relay_state)) 
+        self._COLUMN_COUNT = 9
+        self.device_utility_table_widget.setColumnCount(self._COLUMN_COUNT)  
+        print("C")
+        # STYLING
+        self.device_utility_table_widget.setStyleSheet("selection-background-color: #ECECEC; selection-color: #000000;");
+        print("D")
         
-    def _update_table(self):
-            # Table general appearance settings
-            self.table_widget.verticalHeader().setVisible(False)
-            self.table_widget.setSelectionBehavior(QAbstractItemView.SelectRows)    
-            self.table_widget.setSelectionMode(QAbstractItemView.SingleSelection)
-            self.table_widget.setFocusPolicy(Qt.NoFocus);  
-            self.table_widget.setEditTriggers(QTableWidget.NoEditTriggers) # MAKE CELLS READ ONLY
+        for _i, _header in enumerate(device_utility_headers):
+            _header_text = QTableWidgetItem()
+            _header_text.setText(_header)
+            self.device_utility_table_widget.setHorizontalHeaderItem(_i,_header_text)
+        
+        for _i, _row in enumerate(relay_state):
+            #for _j, _value in enumerate(_row): self.device_utility_table_widget.setItem(_i,_j, QTableWidgetItem(_value))
+            for _j, _value in enumerate(_row): 
+                self.kk = QTableWidgetItem(_j)
+                self.kk.setText(_value)
+                self.device_utility_table_widget.setItem(_i,_j, self.kk)
+        print("E")
+        for _row in range(len(relay_state)): self._add_button(_row,self._COLUMN_COUNT-7,"Close", self.close1)
+        for _row in range(len(relay_state)): self._add_button(_row,self._COLUMN_COUNT-6,"Open", self.open1)
+        for _row in range(len(relay_state)): self._add_button(_row,self._COLUMN_COUNT-5,"Toggle", self.toggle1)
+        for _row in range(len(relay_state)): self._add_button(_row,self._COLUMN_COUNT-4,"ON", self.toggle_auto1)
+        print("F")
+        #self._headerView = QHeaderView(QtCore.Qt.Horizontal, self.device_utility_table_widget)
+        #self.device_utility_table_widget.setHorizontalHeader(self._headerView)
+        #self._headerView.setSectionResizeMode(len(device_utility_headers), QHeaderView.Stretch) # SET LAST SECTION TO STRETCH
+        #self._headerView.setSectionsClickable(True)
+        print("G")
+        self.device_utility_table_widget.setColumnWidth(self._COLUMN_COUNT-7, 60);
+        self.device_utility_table_widget.setColumnWidth(self._COLUMN_COUNT-6, 60);
+        self.device_utility_table_widget.setColumnWidth(self._COLUMN_COUNT-5, 60);
+        self.device_utility_table_widget.setColumnWidth(self._COLUMN_COUNT-4, 60);
+        print("H")
+        
+    def connect_device(self):
+        pass
 
-            #Row count
-            self.table_widget.setRowCount(len(data)) 
-            self.column_count = 5
-            self.table_widget.setColumnCount(self.column_count)  
+    def toggle1(self):
+        print("toggle")
 
-            # STYLING
-            self.table_widget.setStyleSheet("selection-background-color: #ECECEC; \
-            selection-color: #000000;");
+    def close1(self):
+        print("close")
 
-            for i, header in enumerate(headers):
-                header_text = QTableWidgetItem()
-                header_text.setText(header)
-                self.table_widget.setHorizontalHeaderItem(i,header_text)
-            for i, row in enumerate(data):
-                for j, value in enumerate(row): self.table_widget.setItem(i,j, QTableWidgetItem(value))
-            for row in range(len(data)): self.add_button(row,self.column_count-2,"Open", self.open_device)
-            for row in range(len(data)): self.add_button(row,self.column_count-1,"Delete", self.delete_row)
-            
-            headerView = QHeaderView(QtCore.Qt.Horizontal, self.table_widget)
-            self.table_widget.setHorizontalHeader(headerView)
-            headerView.setSectionResizeMode(2, QHeaderView.Stretch)
-            #headerView.setSectionsClickable(True)
+    def open1(self):
+        print("open")
 
-            self.table_widget.setColumnWidth(self.column_count-2, 60);
-            self.table_widget.setColumnWidth(self.column_count-1, 60);
+    def toggle_auto1(self):
+        print("auto")
+    '''
+        
+    def update_device_table(self):
+        # Table general appearance settings
+        self.table_widget.verticalHeader().setVisible(False)
+        self.table_widget.setSelectionBehavior(QAbstractItemView.SelectRows)    
+        self.table_widget.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table_widget.setFocusPolicy(Qt.NoFocus);  
+        self.table_widget.setEditTriggers(QTableWidget.NoEditTriggers) # MAKE CELLS READ ONLY
 
-            self.tab_devices.layout.addWidget(self.table_widget,2,0,2,6)
+        #Row count
+        self.table_widget.setRowCount(len(data)) 
+        self.column_count = 5
+        self.table_widget.setColumnCount(self.column_count)  
+
+        # STYLING
+        self.table_widget.setStyleSheet("selection-background-color: #ECECEC; selection-color: #000000;");
+        
+        for i, header in enumerate(headers):
+            header_text = QTableWidgetItem()
+            header_text.setText(header)
+            self.table_widget.setHorizontalHeaderItem(i,header_text)
+    
+        for i, row in enumerate(data):
+            for j, value in enumerate(row): self.table_widget.setItem(i,j, QTableWidgetItem(value))
+        for row in range(len(data)): self.add_button(row,self.column_count-2,"Open", self.open_device)
+        for row in range(len(data)): self.add_button(row,self.column_count-1,"Delete", self.delete_row)
+        
+        #headerView = QHeaderView(QtCore.Qt.Horizontal, self.table_widget)
+        #self.table_widget.setHorizontalHeader(headerView)
+        #headerView.setSectionResizeMode(2, QHeaderView.Stretch)
+        #headerView.setSectionsClickable(True)
+
+        self.table_widget.setColumnWidth(self.column_count-2, 60);
+        self.table_widget.setColumnWidth(self.column_count-1, 60);
+
+        self.tab_devices.layout.addWidget(self.table_widget,2,0,2,6)
     
     def delete_row(self):
         print("Deleting row")
@@ -194,20 +313,31 @@ class TabGroup(QWidget):
         self.add_button(len(data)-1,self.column_count-1,"Delete", self.delete_row)
 
     def add_button(self,row,column,text, target):
-        btn_delete = QPushButton(self)
+        btn_delete = QPushButton()
         btn_delete.setText(text)
         btn_delete.clicked.connect(target)
         btn_delete.setFont(QFont('Calibri',10))
         #btn_delete.setStyleSheet("background-color : #FF605C")
         self.table_widget.setCellWidget(row, column, btn_delete)
-    
+    '''
+    def _add_button(self,row,column,text, target):
+        _btn_delete = QPushButton()
+        _btn_delete.setText(text)
+        _btn_delete.clicked.connect(target)
+        _btn_delete.setFont(QFont('Calibri',10))
+        #btn_delete.setStyleSheet("background-color : #FF605C")
+        self.device_utility_table_widget.setCellWidget(row, column, _btn_delete)
+    '''
+
     def open_device(self):
         print("Opening tab")
         index=(self.table_widget.selectionModel().currentIndex())
         print(index.row()) # note: the row is index starting from 0
         device_tab = DeviceTab(self.tabs,index.row())
-        self.tabs.addTab(device_tab,"test")
+        self.tabs.addTab(device_tab,data[index.row()][0])
         self.tabs.setCurrentWidget(device_tab)
+        
+        #self.tabs.setCurrentWidget(self.tab_device_utility)
 
 class DeviceTab(QTabWidget):
     def __init__(self,tabs,row):
@@ -286,11 +416,11 @@ class DeviceTab(QTabWidget):
 
     def _update_relay_table(self):
         print("A")
-        #self._tableWidget.verticalHeader().setVisible(False)
-        #self._tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)    
-        #self._tableWidget.setSelectionMode(QAbstractItemView.SingleSelection)
-        #self._tableWidget.setFocusPolicy(Qt.NoFocus);  
-        #self._tableWidget.setEditTriggers(QTableWidget.NoEditTriggers) # MAKE CELLS READ ONLY
+        self._tableWidget.verticalHeader().setVisible(False)
+        self._tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)    
+        self._tableWidget.setSelectionMode(QAbstractItemView.SingleSelection)
+        self._tableWidget.setFocusPolicy(Qt.NoFocus);  
+        self._tableWidget.setEditTriggers(QTableWidget.NoEditTriggers) # MAKE CELLS READ ONLY
         print("B")
         #Row count
         self._tableWidget.setRowCount(len(self._relay_state)) 
@@ -313,10 +443,10 @@ class DeviceTab(QTabWidget):
         for _row in range(len(self._relay_state)): self._add_button(_row,self._COLUMN_COUNT-5,"Toggle", self.toggle1)
         for _row in range(len(self._relay_state)): self._add_button(_row,self._COLUMN_COUNT-4,"ON", self.toggle_auto1)
         print("F")
-        self._headerView = QHeaderView(QtCore.Qt.Horizontal, self._tableWidget)
-        self._tableWidget.setHorizontalHeader(self._headerView)
-        self._headerView.setSectionResizeMode(len(self._headers), QHeaderView.Stretch) # SET LAST SECTION TO STRETCH
-        self._headerView.setSectionsClickable(True)
+        #self._headerView = QHeaderView(QtCore.Qt.Horizontal, self._tableWidget)
+        #self._tableWidget.setHorizontalHeader(self._headerView)
+        #self._headerView.setSectionResizeMode(len(self._headers), QHeaderView.Stretch) # SET LAST SECTION TO STRETCH
+        #self._headerView.setSectionsClickable(True)
         print("G")
         self._tableWidget.setColumnWidth(self._COLUMN_COUNT-7, 60);
         self._tableWidget.setColumnWidth(self._COLUMN_COUNT-6, 60);
