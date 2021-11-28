@@ -6,9 +6,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 import time
-from qt_material import apply_stylesheet 
 from PyQt5 import QtCore
-
 
 import requests
 import threading
@@ -34,103 +32,73 @@ data = [
     ["10.6.131.100", "5000", "SYSC-PI-17"]
 ]
 
+# This class is the main window for the GUI
 class Widget(QMainWindow):
     #Global constants
     WINDOW_WIDTH = 1300
     WINDOW_HEIGHT = 600
-    WINDOW_MARGIN = 130
-    LINE_THICKNESS = 2
-    ELEMENT_THICKNESS = 4
-    BUTTON_MARGIN = 20
-
-    #Theme constants
-    FONT_SIZE = 15 #px
-    PRIMARY_COLOR = "#1de9b6"
-    SECONDARY_COLOR = "#1976D2"
-    TERTIARY_COLOR = "#018786"
-    LOSER_COLOR = "#D3D3D3"
 
     #Constructor
-    def __init__(self, app):
+    def __init__(self, app, parent=None):
         # Set up threading protocol for ascynchronous communication w/ Controller.
         # Input of constructor is a pointer to (self), to access all instance variables
-
+        
         # Initialize Application
         super().__init__()
-
-        self.relay_status = {}
-
-        self.setWindowIcon(QIcon('images/amd-logo-black.png'))
-
-        self.app = app
-        self.set_gui_size(self.WINDOW_WIDTH,self.WINDOW_HEIGHT)
-        # Format GUI
-        #apply_stylesheet(self.app,theme="light_teal.xml")
-        self.setWindowTitle("AMD RELAY | Version Date 11.23.2021")
-
-        self.table_widget = MyTableWidget(self)
+        #super(Widget,self).__init__(parent)
+        self.app = app 
+        self.relay_status = {} # Dictionary containing state of the Raspberry Pi 4
+        self.init_gui(self.WINDOW_WIDTH,self.WINDOW_HEIGHT)
+        self.table_widget = TabGroup(self)
         self.setCentralWidget(self.table_widget)
 
-    def connect_and_emit_trigger(self):
-        self.trigger.connect(self.handle_trigger)
-
-    def handle_trigger(self):
-        print("trigger signal recieved")
-
-    #Trigger on mouse click
-    def mousePressEvent(self, QMouseEvent):
-        x_pos = QMouseEvent.pos().x()
-        y_pos = QMouseEvent.pos().y()
-
+    ''' 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             for i in self.relay_status:
                 print(i + ":" + str(self.relay_status[i]))
             #self.close()
+    '''
 
     #Initialize GUI with specified width and height (px)
-    def set_gui_size(self, width, height):
+    def init_gui(self, width, height):
+        self.setWindowIcon(QIcon('images/amd-logo-black.png')) # Set favicon
+        self.setWindowTitle("AMD RELAY | Version Date 11.23.2021")
         #Get screen size to center the application
         self.screen = self.app.primaryScreen()
         self.size = self.screen.size()
         self.resize(width, height)
-        widget_size = self.frameGeometry()
+        _widget_size = self.frameGeometry()
         #Recenter GUI based on screen size and widget size
-        self.move(int((self.size.width() - widget_size.width())/2), \
-            int((self.size.height()-widget_size.height())/2))
+        self.move(int((self.size.width() - _widget_size.width())/2), \
+            int((self.size.height()-_widget_size.height())/2))
 
-    def update_labels(self):
-    	pass
 
-    #Paint drawing elements to GUI
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setPen(Qt.gray)
-
-class MyTableWidget(QWidget):
+# This class is the tabs widget that populates the main window.  This contains all the different tabs/pages.
+class TabGroup(QWidget):
     def __init__(self, parent):
         super(QWidget, self).__init__(parent)
-        self.layout_primary = QVBoxLayout(self)
-        
+
         # Tab Structure
-        self.tabs = QTabWidget()
-        self.tab_devices = QWidget()
-    
-        # Add tabs to widget
-        self.layout_primary.addWidget(self.tabs)
-        self.setLayout(self.layout_primary)
-    
-        # Add tabs
+        self.tabs = QTabWidget(self)
+        self.tab_devices = QWidget(self)
         self.tabs.addTab(self.tab_devices,"Devices List")
         #self.tab_device_utility.setDisabled(True)
 
+        self.single_tabs = []
+    
+        # Add tabs to widget
+        self.layout_primary = QVBoxLayout(self)
+        self.layout_primary.addWidget(self.tabs)
+        self.setLayout(self.layout_primary)
+        
         # Enable close buttons on all but first
         self.tabs.setTabsClosable(True)
         self.tabs.tabCloseRequested.connect(self.tabs.removeTab)
         default_side = self.tabs.style().styleHint(QStyle.SH_TabBar_CloseButtonPosition, None, self.tabs.tabBar())
         self.tabs.tabBar().setTabButton(0, default_side, None)
 
-        # Editable fields
+        # QLineEdit fields
         self.field_ip_address = QLineEdit(self)
         self.field_port_number = QLineEdit(self)
         self.field_port_number.setText("5000")
@@ -138,7 +106,7 @@ class MyTableWidget(QWidget):
         self.field_host_name.setText("Automatic Detection")
         self.field_host_name.setEnabled(False)
 
-        # Display labels
+        # QLabel labels
         self.label_ip_address = QLabel(self)
         self.label_ip_address.setText("IP Address:")
         self.label_port_number = QLabel(self)
@@ -151,10 +119,9 @@ class MyTableWidget(QWidget):
         self.btn_add_device.setText("Add to List")
         self.btn_add_device.clicked.connect(self.add_device)
 
-        ### Devices List Tab Structure
+        ## Tab 1: Devices List Tab Structure
         self.tab_devices.layout = QGridLayout(self)
         self.tab_devices.setLayout(self.tab_devices.layout)
-
         # Row 1
         self.tab_devices.layout.addWidget(self.label_ip_address,0,0)
         self.tab_devices.layout.addWidget(self.field_ip_address,0,1)
@@ -165,51 +132,52 @@ class MyTableWidget(QWidget):
         # Row 2
         self.tab_devices.layout.addWidget(self.btn_add_device,1,0,1,1)
         # Row 3
-        self.tableWidget = QTableWidget()
-        self.update_table()
+        self.table_widget = QTableWidget(self)
+        self._update_table()
         
-    def update_table(self):
-            self.tableWidget.verticalHeader().setVisible(False)
-            self.tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)    
-            self.tableWidget.setSelectionMode(QAbstractItemView.SingleSelection)
-            self.tableWidget.setFocusPolicy(Qt.NoFocus);  
-            self.tableWidget.setEditTriggers(QTableWidget.NoEditTriggers) # MAKE CELLS READ ONLY
+    def _update_table(self):
+            # Table general appearance settings
+            self.table_widget.verticalHeader().setVisible(False)
+            self.table_widget.setSelectionBehavior(QAbstractItemView.SelectRows)    
+            self.table_widget.setSelectionMode(QAbstractItemView.SingleSelection)
+            self.table_widget.setFocusPolicy(Qt.NoFocus);  
+            self.table_widget.setEditTriggers(QTableWidget.NoEditTriggers) # MAKE CELLS READ ONLY
 
             #Row count
-            self.tableWidget.setRowCount(len(data)) 
-            self.COLUMN_COUNT = 5
-            self.tableWidget.setColumnCount(self.COLUMN_COUNT)  
+            self.table_widget.setRowCount(len(data)) 
+            self.column_count = 5
+            self.table_widget.setColumnCount(self.column_count)  
 
             # STYLING
-            self.tableWidget.setStyleSheet("selection-background-color: #ECECEC; \
+            self.table_widget.setStyleSheet("selection-background-color: #ECECEC; \
             selection-color: #000000;");
 
             for i, header in enumerate(headers):
                 header_text = QTableWidgetItem()
                 header_text.setText(header)
-                self.tableWidget.setHorizontalHeaderItem(i,header_text)
+                self.table_widget.setHorizontalHeaderItem(i,header_text)
             for i, row in enumerate(data):
-                for j, value in enumerate(row): self.tableWidget.setItem(i,j, QTableWidgetItem(value))
-            for row in range(len(data)): self.add_button(row,self.COLUMN_COUNT-2,"Open", self.open_device)
-            for row in range(len(data)): self.add_button(row,self.COLUMN_COUNT-1,"Delete", self.delete_row)
+                for j, value in enumerate(row): self.table_widget.setItem(i,j, QTableWidgetItem(value))
+            for row in range(len(data)): self.add_button(row,self.column_count-2,"Open", self.open_device)
+            for row in range(len(data)): self.add_button(row,self.column_count-1,"Delete", self.delete_row)
             
-            headerView = QHeaderView(QtCore.Qt.Horizontal, self.tableWidget)
-            self.tableWidget.setHorizontalHeader(headerView)
+            headerView = QHeaderView(QtCore.Qt.Horizontal, self.table_widget)
+            self.table_widget.setHorizontalHeader(headerView)
             headerView.setSectionResizeMode(2, QHeaderView.Stretch)
             #headerView.setSectionsClickable(True)
 
-            self.tableWidget.setColumnWidth(self.COLUMN_COUNT-2, 60);
-            self.tableWidget.setColumnWidth(self.COLUMN_COUNT-1, 60);
+            self.table_widget.setColumnWidth(self.column_count-2, 60);
+            self.table_widget.setColumnWidth(self.column_count-1, 60);
 
-            self.tab_devices.layout.addWidget(self.tableWidget,2,0,2,6)
+            self.tab_devices.layout.addWidget(self.table_widget,2,0,2,6)
     
     def delete_row(self):
         print("Deleting row")
         print("Opening Device")
-        index=(self.tableWidget.selectionModel().currentIndex())
+        index=(self.table_widget.selectionModel().currentIndex())
         print(index.row()) # note: the row is index starting from 0
         data.pop(index.row())
-        self.tableWidget.removeRow(index.row())
+        self.table_widget.removeRow(index.row())
         print(data)
 
     def add_device(self):
@@ -218,34 +186,35 @@ class MyTableWidget(QWidget):
         host_name = self.field_host_name.text()
         print("Adding device")
         data.append([ip,port,host_name])
-        self.tableWidget.setRowCount(len(data)) 
+        self.table_widget.setRowCount(len(data)) 
         for i, row in enumerate(data):
                 for j, value in enumerate(row): 
-                    self.tableWidget.setItem(i,j, QTableWidgetItem(value))
-        self.add_button(len(data)-1,self.COLUMN_COUNT-2,"Open", self.open_device)
-        self.add_button(len(data)-1,self.COLUMN_COUNT-1,"Delete", self.delete_row)
+                    self.table_widget.setItem(i,j, QTableWidgetItem(value))
+        self.add_button(len(data)-1,self.column_count-2,"Open", self.open_device)
+        self.add_button(len(data)-1,self.column_count-1,"Delete", self.delete_row)
 
     def add_button(self,row,column,text, target):
-        btn_delete = QPushButton()
+        btn_delete = QPushButton(self)
         btn_delete.setText(text)
         btn_delete.clicked.connect(target)
         btn_delete.setFont(QFont('Calibri',10))
         #btn_delete.setStyleSheet("background-color : #FF605C")
-        self.tableWidget.setCellWidget(row, column, btn_delete)
+        self.table_widget.setCellWidget(row, column, btn_delete)
     
     def open_device(self):
         print("Opening tab")
-        index=(self.tableWidget.selectionModel().currentIndex())
+        index=(self.table_widget.selectionModel().currentIndex())
         print(index.row()) # note: the row is index starting from 0
-        DeviceUtility(self.tabs,index.row())
+        device_tab = DeviceTab(self.tabs,index.row())
+        self.tabs.addTab(device_tab,"test")
+        self.tabs.setCurrentWidget(device_tab)
 
-class DeviceUtility(QTabWidget):
+class DeviceTab(QTabWidget):
     def __init__(self,tabs,row):
+        #super().__init__()
+        super(DeviceTab, self).__init__()
 
-        self._headers = ['Relay Group', \
-        'Relay Status','Close','Open', \
-        'Toggle','Auto Mode','Toggle Time','Computer Status','Description']
-
+        self._headers = ['Relay Group', 'Relay Status','Close','Open', 'Toggle','Auto Mode','Toggle Time','Computer Status','Description']
         self._relay_state = [
             ["1", "Open", "Close",'Open','Toggle','OFF','100','ONLINE','Description'],
             ["2", "Open", "Close",'Open','Toggle','OFF','100','ONLINE','Description'],
@@ -262,19 +231,21 @@ class DeviceUtility(QTabWidget):
         ]
 
         # Create new tab and append to existing tab group
-        super(QTabWidget, self).__init__()
-        self.tabs = tabs
+        #self._tabs = tabs
         self._ip = data[row][0]
         self._port = data[row][1]
         self._host_name = data[row][2]
 
-        self._tab = QTabWidget()
-        self.tabs.addTab(self._tab,self._ip + ":" + self._port + str(time.time()))
-        self.tabs.setCurrentWidget(self._tab)
+        #self._tab = QTabWidget(self)
+        #self._tabs.addTab(self._tab,self._ip + ":" + self._port + str(time.time()))
+        #self._tabs.setCurrentWidget(self._tab)
 
-        self.init_template()
+        #self._tab = QTabWidget(self)
+        #self._tabs.addTab(self._tab,self._ip + ":" + self._port + str(time.time()))
+        #self._tabs.setCurrentWidget(self._tab)
+        self._init_template()
         
-    def init_template(self):
+    def _init_template(self):
         # Editable Fields
         self._field_ip_address = QLineEdit(self)
         self._field_ip_address.setText(self._ip)
@@ -299,82 +270,85 @@ class DeviceUtility(QTabWidget):
         self._label_host_name.setText("Host Name:")
 
         # Layout Structure as Grid View
-        self._tab.layout = QGridLayout(self)
-        self._tab.setLayout(self._tab.layout)
+        self.layout = QGridLayout(self)
+        self.setLayout(self.layout)
 
          # Row 1
-        self._tab.layout.addWidget(self._label_ip_address,0,0)
-        self._tab.layout.addWidget(self._field_ip_address,0,1)
-        self._tab.layout.addWidget(self._label_port_number,0,2)
-        self._tab.layout.addWidget(self._field_port_number,0,3)
-        self._tab.layout.addWidget(self._label_host_name,0,4)
-        self._tab.layout.addWidget(self._field_host_name,0,5)
+        self.layout.addWidget(self._label_ip_address,0,0)
+        self.layout.addWidget(self._field_ip_address,0,1)
+        self.layout.addWidget(self._label_port_number,0,2)
+        self.layout.addWidget(self._field_port_number,0,3)
+        self.layout.addWidget(self._label_host_name,0,4)
+        self.layout.addWidget(self._field_host_name,0,5)
         # Row 2
-        self._tableWidget = QTableWidget()
-        self.update_relay_table()
+        self._tableWidget = QTableWidget(self)
+        self._update_relay_table()
 
-    def update_relay_table(self):
-        self._tableWidget.verticalHeader().setVisible(False)
-        self._tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)    
-        self._tableWidget.setSelectionMode(QAbstractItemView.SingleSelection)
-        self._tableWidget.setFocusPolicy(Qt.NoFocus);  
-        self._tableWidget.setEditTriggers(QTableWidget.NoEditTriggers) # MAKE CELLS READ ONLY
-
+    def _update_relay_table(self):
+        print("A")
+        #self._tableWidget.verticalHeader().setVisible(False)
+        #self._tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)    
+        #self._tableWidget.setSelectionMode(QAbstractItemView.SingleSelection)
+        #self._tableWidget.setFocusPolicy(Qt.NoFocus);  
+        #self._tableWidget.setEditTriggers(QTableWidget.NoEditTriggers) # MAKE CELLS READ ONLY
+        print("B")
         #Row count
         self._tableWidget.setRowCount(len(self._relay_state)) 
         self._COLUMN_COUNT = 9
         self._tableWidget.setColumnCount(self._COLUMN_COUNT)  
-
+        print("C")
         # STYLING
         self._tableWidget.setStyleSheet("selection-background-color: #ECECEC; \
         selection-color: #000000;");
-
+        print("D")
         for _i, _header in enumerate(self._headers):
             _header_text = QTableWidgetItem()
             _header_text.setText(_header)
             self._tableWidget.setHorizontalHeaderItem(_i,_header_text)
         for _i, _row in enumerate(self._relay_state):
             for _j, _value in enumerate(_row): self._tableWidget.setItem(_i,_j, QTableWidgetItem(_value))
-        
-        for _row in range(len(self._relay_state)): self._add_button(_row,self._COLUMN_COUNT-7,"Close", self.close)
-        for _row in range(len(self._relay_state)): self._add_button(_row,self._COLUMN_COUNT-6,"Open", self.open)
-        for _row in range(len(self._relay_state)): self._add_button(_row,self._COLUMN_COUNT-5,"Toggle", self.toggle)
-        for _row in range(len(self._relay_state)): self._add_button(_row,self._COLUMN_COUNT-4,"ON", self.toggle_auto)
-        
+        print("E")
+        for _row in range(len(self._relay_state)): self._add_button(_row,self._COLUMN_COUNT-7,"Close", self.close1)
+        for _row in range(len(self._relay_state)): self._add_button(_row,self._COLUMN_COUNT-6,"Open", self.open1)
+        for _row in range(len(self._relay_state)): self._add_button(_row,self._COLUMN_COUNT-5,"Toggle", self.toggle1)
+        for _row in range(len(self._relay_state)): self._add_button(_row,self._COLUMN_COUNT-4,"ON", self.toggle_auto1)
+        print("F")
         self._headerView = QHeaderView(QtCore.Qt.Horizontal, self._tableWidget)
         self._tableWidget.setHorizontalHeader(self._headerView)
         self._headerView.setSectionResizeMode(len(self._headers), QHeaderView.Stretch) # SET LAST SECTION TO STRETCH
         self._headerView.setSectionsClickable(True)
-
+        print("G")
         self._tableWidget.setColumnWidth(self._COLUMN_COUNT-7, 60);
         self._tableWidget.setColumnWidth(self._COLUMN_COUNT-6, 60);
         self._tableWidget.setColumnWidth(self._COLUMN_COUNT-5, 60);
         self._tableWidget.setColumnWidth(self._COLUMN_COUNT-4, 60);
-
-        self._tab.layout.addWidget(self._tableWidget,1,0,1,6)
+        print("H")
+        self.layout.addWidget(self._tableWidget,1,0,1,6)
 
     def _add_button(self,row,column,text, target):
-        _btn_delete = QPushButton()
+        _btn_delete = QPushButton(self)
         _btn_delete.setText(text)
         _btn_delete.clicked.connect(target)
         _btn_delete.setFont(QFont('Calibri',10))
         #btn_delete.setStyleSheet("background-color : #FF605C")
         self._tableWidget.setCellWidget(row, column, _btn_delete)
 
-    def toggle(self):
+    def toggle1(self):
         print("toggle")
 
-    def close(self):
+    def close1(self):
         print("close")
 
-    def open(self):
-        print("toggle")
+    def open1(self):
+        print("open")
 
-    def toggle_auto(self):
-        print("toggle")
-
+    def toggle_auto1(self):
+        print("auto")
 
 def rest_server(widget):
+    '''
+    Gets a dictionary containing the state of the Raspberry Pi 4 using REST API.
+    '''
     CLOCK_RATE_SECONDS = 5
     BASE_URL = "http://10.6.131.127:5000/"
     while True:
@@ -386,13 +360,13 @@ def rest_server(widget):
         time.sleep(CLOCK_RATE_SECONDS) # polling frequency is 10ms
 
 if __name__ == '__main__':
-
     app = QApplication(sys.argv)
-    w1 = Widget(app)
-    server = threading.Thread(target=rest_server,args=(w1,))
+    widget = Widget(app)
+    server = threading.Thread(target=rest_server,args=(widget,))
+    server.name = "RESTThread"
     server.setDaemon(True)
     server.start()
-    w1.show()
+    widget.show()
     app.exec_()
     sys.exit()
    
