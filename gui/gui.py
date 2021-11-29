@@ -10,30 +10,28 @@ from PyQt5 import QtCore
 
 import requests
 import threading
+from requests import *
 from requests.models import Response
+from requests.exceptions import ConnectionError
+from urllib3.exceptions import NewConnectionError
+
+# Debugging VPN issue
+import socket, ipaddress, threading
+
+
 headers = ['IP Address','Port Number','Host Name','Open','Delete']
 data = [
     ["10.6.131.127", "5000", "SYSC-PI-1"],
     ["10.6.131.227", "5000", "SYSC-PI-2"],
     ["10.6.193.127", "5000", "SYSC-PI-3"],
     ["10.6.131.137", "5000", "SYSC-PI-4"],
-    ["10.6.131.123", "5000", "SYSC-PI-5"],
-    ["10.6.131.138", "5000", "SYSC-PI-6"],
-    ["10.6.131.138", "5000", "SYSC-PI-7"],
-    ["10.6.131.18", "5000", "SYSC-PI-8"],
-    ["10.6.131.128", "5000", "SYSC-PI-9"],
-    ["10.6.131.178", "5000", "SYSC-PI-10"],
-    ["10.6.131.198", "5000", "SYSC-PI-11"],
-    ["10.6.131.138", "5000", "SYSC-PI-12"],
-    ["10.6.131.158", "5000", "SYSC-PI-13"],
-    ["10.6.131.138", "5000", "SYSC-PI-14"],
-    ["10.6.131.128", "5000", "SYSC-PI-15"],
-    ["10.6.131.198", "5000", "SYSC-PI-16"],
-    ["10.6.131.100", "5000", "SYSC-PI-17"]
+    ["10.6.131.123", "5000", "SYSC-PI-5"]
 ]
 
+relay_state_global = []
+widget = []
 WINDOW_WIDTH = 1300
-WINDOW_HEIGHT = 600
+WINDOW_HEIGHT = 620
 
 # This class is the main window for the GUI
 class Widget(QMainWindow):
@@ -48,8 +46,8 @@ class Widget(QMainWindow):
         self.app = app 
         self.relay_status = {} # Dictionary containing state of the Raspberry Pi 4
         self.init_gui(WINDOW_WIDTH,WINDOW_HEIGHT)
-        self.table_widget = TabGroup(self)
-        self.setCentralWidget(self.table_widget)
+        self.tab_group = TabGroup(self)
+        self.setCentralWidget(self.tab_group)
 
     ''' 
     def keyPressEvent(self, event):
@@ -67,6 +65,7 @@ class Widget(QMainWindow):
         self.screen = self.app.primaryScreen()
         self.size = self.screen.size()
         self.resize(width, height)
+        self.setFixedSize(width,height)
         _widget_size = self.frameGeometry()
         #Recenter GUI based on screen size and widget size
         self.move(int((self.size.width() - _widget_size.width())/2), \
@@ -82,7 +81,7 @@ class TabGroup(QWidget):
         self.tabs = QTabWidget(self)
         self.tab_devices = QWidget(self)
         self.tabs.addTab(self.tab_devices,"Devices List")
-    
+
         # Add tabs to widget
         self.layout_primary = QVBoxLayout(self)
         self.layout_primary.addWidget(self.tabs)
@@ -189,15 +188,28 @@ class TabGroup(QWidget):
     def add_device(self):
         ip = self.field_ip_address.text()
         port = self.field_port_number.text()
-        host_name = self.field_host_name.text()
-        print("Adding device")
-        data.append([ip,port,host_name])
-        self.table_widget.setRowCount(len(data)) 
-        for i, row in enumerate(data):
-                for j, value in enumerate(row): 
-                    self.table_widget.setItem(i,j, QTableWidgetItem(value))
-        self.add_button(len(data)-1,self.column_count-2,"Open", self.open_device)
-        self.add_button(len(data)-1,self.column_count-1,"Delete", self.delete_row)
+
+        if check_port(ip,int(port)):
+            host_name = self.field_host_name.text()
+            try:
+                host_name = socket.gethostbyaddr(ip)[0]
+            except:
+                host_name = self.field_host_name.text()
+            #self.field_host_name.setText(host_name)
+            print("Adding device")
+            data.append([ip,port,host_name])
+            self.table_widget.setRowCount(len(data)) 
+            for i, row in enumerate(data):
+                    for j, value in enumerate(row): 
+                        self.table_widget.setItem(i,j, QTableWidgetItem(value))
+            self.add_button(len(data)-1,self.column_count-2,"Open", self.open_device)
+            self.add_button(len(data)-1,self.column_count-1,"Delete", self.delete_row)
+        else:
+            print("Host computer not online")
+            msg = QMessageBox()
+            msg.setWindowTitle("Notification")
+            msg.setText("This IP & port is invalid")
+            temp_placeholder = msg.exec_()
 
     def add_button(self,row,column,text, target):
         btn_delete = QPushButton()
@@ -210,11 +222,17 @@ class TabGroup(QWidget):
     def open_device(self):
         print("Opening tab")
         index=(self.table_widget.selectionModel().currentIndex())
-        print(index.row()) # note: the row is index starting from 0
-        device_tab = DeviceTab(self.tabs,index.row())
-        self.tabs.addTab(device_tab,data[index.row()][0])
-        self.tabs.setCurrentWidget(device_tab)
-        
+        print(index.row()) # note: the row is index starting from 0]
+        if check_port(data[index.row()][0],int(data[index.row()][1])):
+            device_tab = DeviceTab(self.tabs,index.row())
+            self.tabs.addTab(device_tab,data[index.row()][0] + ":" + data[index.row()][1])
+            self.tabs.setCurrentWidget(device_tab)
+        else:
+            print("Host computer not online")
+            msg = QMessageBox()
+            msg.setWindowTitle("Notification")
+            msg.setText("This IP & port is not online")
+            temp_placeholder = msg.exec_()
         #self.tabs.setCurrentWidget(self.tab_device_utility)
 
 class DeviceTab(QTabWidget):
@@ -223,7 +241,7 @@ class DeviceTab(QTabWidget):
         super(DeviceTab, self).__init__()
 
         self._headers = ['Relay Group', 'Relay Status','Close','Open', 'Toggle','Auto Mode','Toggle Time','Computer Status','Description']
-        self._relay_state = [
+        self._relay_state = [ # THESE ARE DEFAULT VALUES
             ["1", "Open", "Close",'Open','Toggle','OFF','100','Online','Description'],
             ["2", "Open", "Close",'Open','Toggle','OFF','100','Online','Description'],
             ["3", "Open", "Close",'Open','Toggle','OFF','100','Online','Description'],
@@ -243,7 +261,10 @@ class DeviceTab(QTabWidget):
         self._port = data[row][1]
         self._host_name = data[row][2]
         self._init_template()
-        
+
+    def set_relay_state(self, relay_state):
+        self._relay_state = relay_state
+    
     def _init_template(self):
         # Editable Fields
         self._field_ip_address = QLineEdit(self)
@@ -268,6 +289,11 @@ class DeviceTab(QTabWidget):
         self._label_host_name = QLabel(self)
         self._label_host_name.setText("Host Name:")
 
+        # Buttons
+        self._btn_refresh = QPushButton(self)
+        self._btn_refresh.setText("Refresh")
+        self._btn_refresh.clicked.connect(self.update_values)
+
         # Layout Structure as Grid View
         self.layout = QGridLayout(self)
         self.setLayout(self.layout)
@@ -280,8 +306,11 @@ class DeviceTab(QTabWidget):
         self.layout.addWidget(self._label_host_name,0,4)
         self.layout.addWidget(self._field_host_name,0,5)
         # Row 2
+        self.layout.addWidget(self._btn_refresh,1,0)
+        # Row 3
         self._tableWidget = QTableWidget(self)
         self._update_relay_table()
+        self._tableWidget.selectRow(0) # Default select first row
 
     def _update_relay_table(self):
         print("A")
@@ -289,7 +318,8 @@ class DeviceTab(QTabWidget):
         self._tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)    
         self._tableWidget.setSelectionMode(QAbstractItemView.SingleSelection)
         self._tableWidget.setFocusPolicy(Qt.NoFocus);  
-        self._tableWidget.setEditTriggers(QTableWidget.NoEditTriggers) # MAKE CELLS READ ONLY
+        #self._tableWidget.setEditTriggers(QTableWidget.NoEditTriggers) # MAKE CELLS READ ONLY
+
         print("B")
         #Row count
         self._tableWidget.setRowCount(len(self._relay_state)) 
@@ -319,7 +349,7 @@ class DeviceTab(QTabWidget):
 
         general_column_width = 130
         name_column_width = 250
-        button_column_width = 85
+        button_column_width = 90
         horizontal_margin_spacing = 55
         self._tableWidget.setColumnWidth(self._COLUMN_COUNT-9, name_column_width);
         self._tableWidget.setColumnWidth(self._COLUMN_COUNT-8, general_column_width);
@@ -333,7 +363,7 @@ class DeviceTab(QTabWidget):
             4*button_column_width-name_column_width-3*general_column_width);
 
         print("H")
-        self.layout.addWidget(self._tableWidget,1,0,1,6)
+        self.layout.addWidget(self._tableWidget,2,0,2,6)
 
     def _add_button(self,row,column,text, target):
         _btn_delete = QPushButton(self)
@@ -343,36 +373,145 @@ class DeviceTab(QTabWidget):
         #btn_delete.setStyleSheet("background-color : #FF605C")
         self._tableWidget.setCellWidget(row, column, _btn_delete)
 
+    def update_values(self):
+        print("-------------UPDATING")
+        #self._relay_state = relay_state_global
+        for _i, _row in enumerate(self._relay_state):
+            for _j, _value in enumerate(_row): self._tableWidget.setItem(_i,_j, QTableWidgetItem(str(_value)))
+
+    def rest_call(self, endpoint):
+        if check_port(self._ip,int(self._port)):
+            print("IP&Port is okay")
+            call = "http://" + self._ip + ":" + self._port + "/" + endpoint
+            print(call)
+            requests.get(call, timeout=2)
+            
     def toggle1(self):
+        self.update_values()
         print("toggle")
+        index=(self._tableWidget.selectionModel().currentIndex())
+        relay_group_number = self._relay_state[index.row()][0]
+        self.rest_call(str(relay_group_number) + "/toggle")
 
     def close1(self):
+        self.update_values()
         print("close")
+        index=(self._tableWidget.selectionModel().currentIndex())
+        relay_group_number = self._relay_state[index.row()][0]
+        self.rest_call(str(relay_group_number) + "/close")
 
     def open1(self):
+        self.update_values()
         print("open")
+        index=(self._tableWidget.selectionModel().currentIndex())
+        relay_group_number = self._relay_state[index.row()][0]
+        self.rest_call(str(relay_group_number) + "/open")
 
     def toggle_auto1(self):
+        self.update_values()
         print("auto")
+        index=(self._tableWidget.selectionModel().currentIndex())
+        relay_group_number = self._relay_state[index.row()][0]
+        self.rest_call(str(relay_group_number) + "/auto=on")
 
-def rest_server(widget):
+def rest_server():#widget):
     '''
     Gets a dictionary containing the state of the Raspberry Pi 4 using REST API.
     '''
-    CLOCK_RATE_SECONDS = 5
+    CLOCK_RATE_SECONDS = 1
     BASE_URL = "http://10.6.131.127:5000/"
     while True:
-        print(time.time())
+        #print(time.time())
         # This will return a dictionary containing the state of all the relay groups.
-        response = requests.get(BASE_URL + "status-dict")
-        relay_status = response.json()
-        widget.relay_status = relay_status
-        time.sleep(CLOCK_RATE_SECONDS) # polling frequency is 10ms
+        #global relay_state_global
+        print("Current Tab:")
+        print(widget.tab_group.tabs.currentIndex())
+        tab_index = widget.tab_group.tabs.currentIndex()
+        current_tab = widget.tab_group.tabs.currentWidget()
+        #REF ONLY currentIndex=self.tabWidget.currentIndex()
+        #REF ONLY currentWidget=self.tabWidget.currentWidget()
+        
+        if check_port('10.6.131.127',5000):
+            print("connecting")
+            requests.get(BASE_URL + "status-dict", timeout=2)
+            response = requests.get(BASE_URL + "status-dict")
+            relay_status = response.json()
+            state_list = status_dict_to_list(relay_status)
+            #relay_state_global = state_list
+            
+            if tab_index > 0:
+                current_tab.set_relay_state(state_list)
+                #current_tab._btn_refresh.animateClick()
+                current_tab.update_values()
+
+            time.sleep(CLOCK_RATE_SECONDS)
+        else:
+            print("No connection")
+            no_connection_text = ["Host Offline", "NA", "NA",'NA','NA','NA','NA','NA','NA']
+            connection_lost = []
+            for i in range(12):
+                connection_lost.append(no_connection_text)
+            if tab_index > 0:
+                current_tab.set_relay_state(connection_lost)
+                #current_tab._btn_refresh.animateClick()
+                current_tab.update_values()
+            time.sleep(0.1)
+         # polling frequency is 10ms
+
+def check_port(ip, port):
+    '''
+    Checks if the port is open
+    '''
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # TCP
+        #sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
+        socket.setdefaulttimeout(2.0) # seconds (float)
+        result = sock.connect_ex((ip,port))
+        if result == 0:
+            # print ("Port is open")
+            return True
+        else:
+            # print ("Port is closed/filtered")
+            return False
+        sock.close()
+    except:
+        return False
+
+def status_dict_to_list(status_dict):
+    '''
+    Converts the returned dictionary from the REST API into a List.  This List is then used to update the status table.
+    '''
+    relay_state_updated = []
+    for key in status_dict:
+        data = status_dict[key]
+        relay_group = data['PRIMARY_KEY']
+        relay_value = data['RELAY_VALUE']
+        relay_status = "Open"
+        toggle_time = data['TOGGLE_TIME_MILLIS']
+        auto_reboot_enabled = data['AUTO_REBOOT']
+        auto_mode = "Off"
+        sensor_value = data['SENSOR_VALUE']
+        description = data['DESCRIPTION']
+        computer_status = 'Offline'
+        if sensor_value == 1:
+            computer_status = 'Online'
+        if auto_reboot_enabled:
+            auto_mode = "On"
+        if relay_value:
+            relay_status = "Close"
+
+        relay_state_row = [relay_group, relay_status, 'Close','Open','Toggle',auto_mode,toggle_time,computer_status,description]
+        relay_state_updated.append(relay_state_row)
+        #print(relay_state_row)
+    return relay_state_updated
+    #print(relay_state_global)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     widget = Widget(app)
-    server = threading.Thread(target=rest_server,args=(widget,))
+    
+    #server = threading.Thread(target=rest_server,args=(widget,))
+    server = threading.Thread(target=rest_server)
     server.name = "RESTThread"
     server.setDaemon(True)
     server.start()
