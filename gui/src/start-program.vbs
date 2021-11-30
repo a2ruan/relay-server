@@ -1,0 +1,1 @@
+CreateObject("Wscript.Shell").Run "restapi-dll.bat",0,True
