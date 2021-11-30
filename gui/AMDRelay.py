@@ -131,7 +131,8 @@ class TabGroup(QWidget):
         # Row 3
         self.table_widget = QTableWidget(self)
         self.update_device_table()
-        
+
+
     def update_device_table(self):
         # Table general appearance settings
         self.table_widget.verticalHeader().setVisible(False)
@@ -227,6 +228,7 @@ class TabGroup(QWidget):
             device_tab = DeviceTab(self.tabs,index.row())
             self.tabs.addTab(device_tab,data[index.row()][0] + ":" + data[index.row()][1])
             self.tabs.setCurrentWidget(device_tab)
+            
         else:
             print("Host computer not online")
             msg = QMessageBox()
@@ -242,18 +244,18 @@ class DeviceTab(QTabWidget):
 
         self._headers = ['Relay Group', 'Relay Status','Close','Open', 'Toggle','Auto Mode','Toggle Time','Computer Status','Description']
         self._relay_state = [ # THESE ARE DEFAULT VALUES
-            ["1", "Open", "Close",'Open','Toggle','OFF','100','Online','Description'],
-            ["2", "Open", "Close",'Open','Toggle','OFF','100','Online','Description'],
-            ["3", "Open", "Close",'Open','Toggle','OFF','100','Online','Description'],
-            ["4", "Open", "Close",'Open','Toggle','OFF','100','Online','Description'],
-            ["5", "Open", "Close",'Open','Toggle','OFF','100','Online','Description'],
-            ["6", "Open", "Close",'Open','Toggle','OFF','100','Online','Description'],
-            ["7", "Open", "Close",'Open','Toggle','OFF','100','Online','Description'],
-            ["8", "Open", "Close",'Open','Toggle','OFF','100','Online','Description'],
-            ["9", "Open", "Close",'Open','Toggle','OFF','100','Online','Description'],
-            ["10", "Open", "Close",'Open','Toggle','OFF','100','Online','Description'],
-            ["11", "Open", "Close",'Open','Toggle','OFF','100','Online','Description'],
-            ["12", "Open", "Close",'Open','Toggle','OFF','100','Online','Description']
+            ["1", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
+            ["2", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
+            ["3", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
+            ["4", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
+            ["5", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
+            ["6", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
+            ["7", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
+            ["8", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
+            ["9", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
+            ["10", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
+            ["11", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
+            ["12", "Open", "Close",'Open','Toggle','Off','100','Online','Description']
         ]
 
         # Create new tab and append to existing tab group
@@ -263,8 +265,14 @@ class DeviceTab(QTabWidget):
         self._init_template()
 
     def set_relay_state(self, relay_state):
-        self._relay_state = relay_state
-    
+        if sorted(self._relay_state) == sorted(relay_state):
+            pass
+            print("skipping")
+        else:
+            self._relay_state = relay_state
+            print("updating")
+            
+
     def _init_template(self):
         # Editable Fields
         self._field_ip_address = QLineEdit(self)
@@ -315,10 +323,10 @@ class DeviceTab(QTabWidget):
     def _update_relay_table(self):
         print("A")
         self._tableWidget.verticalHeader().setVisible(False)
-        self._tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)    
+        #self._tableWidget.setSelectionBehavior(QAbstractItemView.SelectRows)    
         self._tableWidget.setSelectionMode(QAbstractItemView.SingleSelection)
         self._tableWidget.setFocusPolicy(Qt.NoFocus);  
-        #self._tableWidget.setEditTriggers(QTableWidget.NoEditTriggers) # MAKE CELLS READ ONLY
+        self._tableWidget.setEditTriggers(QTableWidget.NoEditTriggers) # MAKE CELLS READ ONLY
 
         print("B")
         #Row count
@@ -335,11 +343,15 @@ class DeviceTab(QTabWidget):
             self._tableWidget.setHorizontalHeaderItem(_i,_header_text)
         for _i, _row in enumerate(self._relay_state):
             for _j, _value in enumerate(_row): self._tableWidget.setItem(_i,_j, QTableWidgetItem(_value))
+ 
         print("E")
         for _row in range(len(self._relay_state)): self._add_button(_row,self._COLUMN_COUNT-7,"Close", self.close1)
         for _row in range(len(self._relay_state)): self._add_button(_row,self._COLUMN_COUNT-6,"Open", self.open1)
         for _row in range(len(self._relay_state)): self._add_button(_row,self._COLUMN_COUNT-5,"Toggle", self.toggle1)
-        for _row in range(len(self._relay_state)): self._add_button(_row,self._COLUMN_COUNT-4,"ON", self.toggle_auto1)
+        row_counter = 0
+        for _row in range(len(self._relay_state)): 
+            self._add_button(_row,self._COLUMN_COUNT-4,self._relay_state[row_counter][5], self.toggle_auto1)
+            row_counter += 1
         print("F")
         #self._headerView = QHeaderView(QtCore.Qt.Horizontal, self._tableWidget)
         #self._tableWidget.setHorizontalHeader(self._headerView)
@@ -377,7 +389,24 @@ class DeviceTab(QTabWidget):
         print("-------------UPDATING")
         #self._relay_state = relay_state_global
         for _i, _row in enumerate(self._relay_state):
-            for _j, _value in enumerate(_row): self._tableWidget.setItem(_i,_j, QTableWidgetItem(str(_value)))
+            for _j, _value in enumerate(_row): 
+                cell_widget = self._tableWidget.cellWidget(_i,_j)
+                if cell_widget == None: # Filters out QPushButtons
+                    placeholder_text = QTableWidgetItem(str(_value))
+                    self._tableWidget.setItem(_i,_j, placeholder_text)
+                if _j == 1 and _value == "Close":
+                    placeholder_text.setBackground(QColor(80, 200, 120))
+                elif _j == 1 and _value == "Open":
+                    placeholder_text.setBackground(QColor(255, 128, 128))
+
+        # Update auto buttons
+        for row in range(len(self._relay_state)):
+            auto_state = self._relay_state[row][5]
+            auto_btn_temp = self._tableWidget.cellWidget(row,5)
+            auto_btn_temp.setText(auto_state)
+
+        self._tableWidget.viewport().update()
+        
 
     def rest_call(self, endpoint):
         if check_port(self._ip,int(self._port)):
@@ -411,14 +440,22 @@ class DeviceTab(QTabWidget):
         self.update_values()
         print("auto")
         index=(self._tableWidget.selectionModel().currentIndex())
+        
         relay_group_number = self._relay_state[index.row()][0]
-        self.rest_call(str(relay_group_number) + "/auto=on")
+        auto_btn = self._tableWidget.cellWidget(index.row(),5)
+        if auto_btn.text() == "On":
+            auto_btn.setText("Off")
+            self.rest_call(str(relay_group_number) + "/auto=off")
+        else:
+            auto_btn.setText("On")
+            self.rest_call(str(relay_group_number) + "/auto=on")
+        
 
 def rest_server():#widget):
     '''
     Gets a dictionary containing the state of the Raspberry Pi 4 using REST API.
     '''
-    CLOCK_RATE_SECONDS = 1
+    CLOCK_RATE_SECONDS = 1.5
     BASE_URL = "http://10.6.131.127:5000/"
     while True:
         #print(time.time())
@@ -433,7 +470,7 @@ def rest_server():#widget):
         
         if check_port('10.6.131.127',5000):
             print("connecting")
-            requests.get(BASE_URL + "status-dict", timeout=2)
+            requests.get(BASE_URL + "status-dict")
             response = requests.get(BASE_URL + "status-dict")
             relay_status = response.json()
             state_list = status_dict_to_list(relay_status)
@@ -441,9 +478,9 @@ def rest_server():#widget):
             
             if tab_index > 0:
                 current_tab.set_relay_state(state_list)
-                #current_tab._btn_refresh.animateClick()
+                time.sleep(0.1)
                 current_tab.update_values()
-
+                
             time.sleep(CLOCK_RATE_SECONDS)
         else:
             print("No connection")
@@ -454,7 +491,7 @@ def rest_server():#widget):
             if tab_index > 0:
                 current_tab.set_relay_state(connection_lost)
                 #current_tab._btn_refresh.animateClick()
-                current_tab.update_values()
+                #current_tab.update_values()
             time.sleep(0.1)
          # polling frequency is 10ms
 
