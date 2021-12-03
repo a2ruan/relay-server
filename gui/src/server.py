@@ -596,7 +596,7 @@ def status_dict_to_list(status_dict):
         if relay_value:
             relay_status = "Close"
 
-        relay_state_row = [relay_group, relay_status, 'Close','Open','Toggle',auto_mode,toggle_time,computer_status,description]
+        relay_state_row = [relay_group, relay_status, ' ',' ',' ',auto_mode,toggle_time,computer_status,description]
         relay_state_updated.append(relay_state_row)
         print(relay_state_row)
     return relay_state_updated
