@@ -18,6 +18,12 @@ from urllib3.exceptions import NewConnectionError
 # Debugging VPN issue
 import socket, ipaddress, threading
 
+# Error logging
+def trap_exc_during_debug(*args):
+    # when app raises uncaught exception, print info
+    print(args)
+sys.excepthook = trap_exc_during_debug
+
 
 headers = ['IP Address','Port Number','Host Name','Open','Delete']
 data = [
@@ -78,6 +84,10 @@ class Widget(QMainWindow):
 class TabGroup(QWidget):
     def __init__(self, parent):
         super(QWidget, self).__init__(parent)
+
+        
+
+
         self.tab_switch_indicator = 1
         # Tab Structure
         self.tabs = QTabWidget(self)
@@ -397,26 +407,32 @@ class DeviceTab(QTabWidget):
 
     def update_values(self):
         print("-------------UPDATING")
-        
+        global lock_disabled
         #self._relay_state = relay_state_global
-        for _i, _row in enumerate(self._relay_state):
-            for _j, _value in enumerate(_row): 
-                print("row=" + str(_i) + ": col=" + str(_j))
-                cell_widget = self._tableWidget.cellWidget(_i,_j)
-                if cell_widget == None: # Filters out QPushButtons
-                    placeholder_text = QTableWidgetItem(str(_value))
-                    self._tableWidget.setItem(_i,_j, placeholder_text)
-                if _j == 1 and _value == "Close":
-                    placeholder_text.setBackground(QColor(80, 200, 120))
-                elif _j == 1 and _value == "Open":
-                    placeholder_text.setBackground(QColor(255, 128, 128))
+        if lock_disabled:
+            for _i, _row in enumerate(self._relay_state):
+                for _j, _value in enumerate(_row): 
+                    print("row=" + str(_i) + ": col=" + str(_j))
+                    cell_widget = self._tableWidget.cellWidget(_i,_j)
+                    if cell_widget == None and lock_disabled: # Filters out QPushButtons
+                        placeholder_text = QTableWidgetItem(str(_value))
+                        self._tableWidget.setItem(_i,_j, placeholder_text)
+                    if _j == 1 and _value == "Close" and lock_disabled:
+                        placeholder_text.setBackground(QColor(80, 200, 120))
+                    elif _j == 1 and _value == "Open" and lock_disabled:
+                        placeholder_text.setBackground(QColor(255, 128, 128))
+                    elif _j == 7 and _value == "Online" and lock_disabled:
+                        placeholder_text.setBackground(QColor(80, 200, 120))
+                    elif _j == 7 and _value == "Offline" and lock_disabled:
+                        placeholder_text.setBackground(QColor(255, 128, 128))
 
         print("updating viewport")
-        
-        self._tableWidget.viewport().update()
+        if lock_disabled:
+            self._tableWidget.viewport().update()
         print("updating buttons")
         # Update auto buttons
-        global lock_disabled
+       
+        
         if lock_disabled: # only run if lock is disabled, so values aren't written while it is reading
             print("lock--1")
             for row in range(len(self._relay_state)):
@@ -432,8 +448,8 @@ class DeviceTab(QTabWidget):
                             auto_btn_temp.setText(auto_state)
                             time.sleep(0.01)
         
-        print("updating viewport")
-        self._tableWidget.viewport().update()
+        #print("updating viewport")
+        #self._tableWidget.viewport().update()
         
         
 
@@ -484,7 +500,7 @@ def rest_server():#widget):
     '''
     Gets a dictionary containing the state of the Raspberry Pi 4 using REST API.
     '''
-    CLOCK_RATE_SECONDS = 0.5
+    CLOCK_RATE_SECONDS = 0.1
     BASE_URL = "http://10.6.131.127:5000/"
     while True:
         #print(time.time())
@@ -499,7 +515,7 @@ def rest_server():#widget):
         
         if check_port('10.6.131.127',5000):# and widget.tab_group.tab_switch_indicator:
             print("connecting")
-            requests.get(BASE_URL + "status-dict")
+            #requests.get(BASE_URL + "status-dict")
             print("connecting1")
             response = requests.get(BASE_URL + "status-dict")
             print("connecting2")
@@ -508,19 +524,21 @@ def rest_server():#widget):
             state_list = status_dict_to_list(relay_status)
             print("connecting4")
             #relay_state_global = state_list
-            
-            if tab_index > 0:
-                global lock_disabled
-                lock_disabled = False
-                print("LOCKED")
-                print("connecting5 TAB SWITCH INDICATOR = " + str(widget.tab_group.tab_switch_indicator))
-                current_tab.set_relay_state(state_list)
-                print("connecting6")
-                print("connecting7")
-                lock_disabled = True
-                print("UNLOCKED")
-                
-                current_tab.update_values()
+            try:
+                if tab_index > 0:
+                    global lock_disabled
+                    lock_disabled = False
+                    print("LOCKED")
+                    print("connecting5 TAB SWITCH INDICATOR = " + str(widget.tab_group.tab_switch_indicator))
+                    current_tab.set_relay_state(state_list)
+                    print("connecting6")
+                    print("connecting7")
+                    lock_disabled = True
+                    print("UNLOCKED")
+                    current_tab.update_values()
+            except:
+                print("EXCEPTION OCCURRED")
+                time.sleep(1)
                 
             time.sleep(CLOCK_RATE_SECONDS)
         else:
@@ -543,7 +561,7 @@ def check_port(ip, port):
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # TCP
         #sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
-        socket.setdefaulttimeout(2.0) # seconds (float)
+        socket.setdefaulttimeout(5.0) # seconds (float)
         result = sock.connect_ex((ip,port))
         if result == 0:
             # print ("Port is open")
@@ -580,9 +598,21 @@ def status_dict_to_list(status_dict):
 
         relay_state_row = [relay_group, relay_status, 'Close','Open','Toggle',auto_mode,toggle_time,computer_status,description]
         relay_state_updated.append(relay_state_row)
-        #print(relay_state_row)
+        print(relay_state_row)
     return relay_state_updated
     #print(relay_state_global)
+
+class ServerThread(QtCore.QThread):
+    def __init__(self, parent=None):
+        QtCore.QThread.__init__(self)
+
+    def start_server(self):
+        for i in range(1,6):
+            time.sleep(1)
+            self.emit(QtCore.SIGNAL("dosomething(QString)"), str(i))
+
+    def run(self):
+        self.start_server()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
