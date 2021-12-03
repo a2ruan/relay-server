@@ -260,18 +260,18 @@ class DeviceTab(QTabWidget):
 
         self._headers = ['Relay Group', 'Relay Status','Close','Open', 'Toggle','Auto Mode','Toggle Time','Computer Status','Description']
         self._relay_state = [ # THESE ARE DEFAULT VALUES
-            ["1", "Open", " ",' ',' ',' ','100','Online','Description'],
-            ["2", "Open", " ",' ',' ',' ','100','Online','Description'],
-            ["3", "Open", " ",' ',' ',' ','100','Online','Description'],
-            ["4", "Open", " ",' ',' ',' ','100','Online','Description'],
-            ["5", "Open", " ",' ',' ',' ','100','Online','Description'],
-            ["6", "Open", " ",' ',' ',' ','100','Online','Description'],
-            ["7", "Open", " ",' ',' ',' ','100','Online','Description'],
-            ["8", "Open", " ",' ',' ',' ','100','Online','Description'],
-            ["9", "Open", " ",' ',' ',' ','100','Online','Description'],
-            ["10", "Open", " ",' ',' ',' ','100','Online','Description'],
-            ["11", "Open", " ",' ',' ',' ','100','Online','Description'],
-            ["12", "Open", " ",' ',' ',' ','100','Online','Description']
+            ["1", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
+            ["2", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
+            ["3", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
+            ["4", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
+            ["5", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
+            ["6", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
+            ["7", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
+            ["8", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
+            ["9", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
+            ["10", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
+            ["11", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
+            ["12", "Open", 'Close','Open','Toggle','On','100','Online','Description']
         ]
 
         # Create new tab and append to existing tab group
@@ -417,14 +417,18 @@ class DeviceTab(QTabWidget):
                     if cell_widget == None and lock_disabled: # Filters out QPushButtons
                         placeholder_text = QTableWidgetItem(str(_value))
                         self._tableWidget.setItem(_i,_j, placeholder_text)
-                    if _j == 1 and _value == "Close" and lock_disabled:
-                        placeholder_text.setBackground(QColor(80, 200, 120))
-                    elif _j == 1 and _value == "Open" and lock_disabled:
-                        placeholder_text.setBackground(QColor(255, 128, 128))
-                    elif _j == 7 and _value == "Online" and lock_disabled:
-                        placeholder_text.setBackground(QColor(80, 200, 120))
-                    elif _j == 7 and _value == "Offline" and lock_disabled:
-                        placeholder_text.setBackground(QColor(255, 128, 128))
+                        if _j == 1 and _value == "Close" and lock_disabled:
+                            placeholder_text.setBackground(QColor(80, 200, 120))
+                        elif _j == 1 and _value == "Open" and lock_disabled:
+                            placeholder_text.setBackground(QColor(255, 128, 128))
+                        elif _j == 7 and _value == "Online" and lock_disabled:
+                            placeholder_text.setBackground(QColor(80, 200, 120))
+                        elif _j == 7 and _value == "Offline" and lock_disabled:
+                            placeholder_text.setBackground(QColor(255, 128, 128))
+                    elif lock_disabled:
+                        placeholder_text = QTableWidgetItem(" ")
+                        self._tableWidget.setItem(_i,_j, placeholder_text)
+
 
         print("updating viewport")
         if lock_disabled:
@@ -432,7 +436,6 @@ class DeviceTab(QTabWidget):
         print("updating buttons")
         # Update auto buttons
        
-        
         if lock_disabled: # only run if lock is disabled, so values aren't written while it is reading
             print("lock--1")
             for row in range(len(self._relay_state)):
@@ -444,7 +447,6 @@ class DeviceTab(QTabWidget):
                         auto_btn_temp = self._tableWidget.cellWidget(row,5)
                         if lock_disabled:
                             print("lock--4")
-                            
                             auto_btn_temp.setText(auto_state)
                             time.sleep(0.01)
         
@@ -596,7 +598,7 @@ def status_dict_to_list(status_dict):
         if relay_value:
             relay_status = "Close"
 
-        relay_state_row = [relay_group, relay_status, ' ',' ',' ',auto_mode,toggle_time,computer_status,description]
+        relay_state_row = [relay_group, relay_status, 'Close','Open','Toggle',auto_mode,toggle_time,computer_status,description]
         relay_state_updated.append(relay_state_row)
         print(relay_state_row)
     return relay_state_updated
