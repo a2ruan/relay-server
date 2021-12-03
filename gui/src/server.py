@@ -260,18 +260,18 @@ class DeviceTab(QTabWidget):
 
         self._headers = ['Relay Group', 'Relay Status','Close','Open', 'Toggle','Auto Mode','Toggle Time','Computer Status','Description']
         self._relay_state = [ # THESE ARE DEFAULT VALUES
-            ["1", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
-            ["2", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
-            ["3", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
-            ["4", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
-            ["5", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
-            ["6", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
-            ["7", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
-            ["8", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
-            ["9", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
-            ["10", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
-            ["11", "Open", "Close",'Open','Toggle','Off','100','Online','Description'],
-            ["12", "Open", "Close",'Open','Toggle','Off','100','Online','Description']
+            ["1", "Open", " ",' ',' ',' ','100','Online','Description'],
+            ["2", "Open", " ",' ',' ',' ','100','Online','Description'],
+            ["3", "Open", " ",' ',' ',' ','100','Online','Description'],
+            ["4", "Open", " ",' ',' ',' ','100','Online','Description'],
+            ["5", "Open", " ",' ',' ',' ','100','Online','Description'],
+            ["6", "Open", " ",' ',' ',' ','100','Online','Description'],
+            ["7", "Open", " ",' ',' ',' ','100','Online','Description'],
+            ["8", "Open", " ",' ',' ',' ','100','Online','Description'],
+            ["9", "Open", " ",' ',' ',' ','100','Online','Description'],
+            ["10", "Open", " ",' ',' ',' ','100','Online','Description'],
+            ["11", "Open", " ",' ',' ',' ','100','Online','Description'],
+            ["12", "Open", " ",' ',' ',' ','100','Online','Description']
         ]
 
         # Create new tab and append to existing tab group
