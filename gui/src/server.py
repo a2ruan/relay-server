@@ -210,7 +210,11 @@ class DeviceTab(QTabWidget):
         super(DeviceTab, self).__init__()
 
         self.headers = ['Relay Group', 'Relay Status','Close','Open', 'Toggle','Auto Mode','Toggle Time','Computer Status','Description']
-        self.relay_state = [ # THESE ARE DEFAULT VALUES
+        self.relay_state = []
+        for i in range(12):
+            self.relay_state.append([str(i),"Open","","","","",100,"Offline","Description"])
+        
+        self.relay_state2 = [ # THESE ARE DEFAULT VALUES
             ["1", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
             ["2", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
             ["3", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
