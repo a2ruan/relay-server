@@ -27,14 +27,15 @@ sys.excepthook = trap_exc_during_debug
 
 headers = ['IP Address','Port Number','Host Name','Open','Delete']
 data = [
-    ["10.6.131.127", "5000", "SYSC-PI-1"],
-    ["10.6.131.227", "5000", "SYSC-PI-2"],
-    ["10.6.193.127", "5000", "SYSC-PI-3"],
-    ["10.6.131.137", "5000", "SYSC-PI-4"],
-    ["10.6.131.123", "5000", "SYSC-PI-5"]
+    ["10.6.131.127", "5000", "SYSC-PI-1"]#,
+    #["10.6.131.227", "5000", "SYSC-PI-2"],
+    #["10.6.193.127", "5000", "SYSC-PI-3"],
+    #["10.6.131.137", "5000", "SYSC-PI-4"],
+    #["10.6.131.123", "5000", "SYSC-PI-5"]
 ]
 
 lock_disabled = True
+lock_disabled2 = True
 
 relay_state_global = []
 widget = []
@@ -68,7 +69,7 @@ class Widget(QMainWindow):
     #Initialize GUI with specified width and height (px)
     def init_gui(self, width, height):
         self.setWindowIcon(QIcon('images/amd-logo-black.png')) # Set favicon
-        self.setWindowTitle("AMD RELAY | Version Date 11.23.2021")
+        self.setWindowTitle("AMD Relay | Version Date 11.23.2021")
         #Get screen size to center the application
         self.screen = self.app.primaryScreen()
         self.size = self.screen.size()
@@ -410,30 +411,31 @@ class DeviceTab(QTabWidget):
         global lock_disabled
         #self._relay_state = relay_state_global
         if lock_disabled:
+            #for i in self._relay_state:
+            #    print(i)
             for _i, _row in enumerate(self._relay_state):
                 for _j, _value in enumerate(_row): 
                     print("row=" + str(_i) + ": col=" + str(_j))
                     cell_widget = self._tableWidget.cellWidget(_i,_j)
                     if cell_widget == None and lock_disabled: # Filters out QPushButtons
                         placeholder_text = QTableWidgetItem(str(_value))
-                        self._tableWidget.setItem(_i,_j, placeholder_text)
+                        if lock_disabled:
+                            self._tableWidget.setItem(_i,_j, placeholder_text)
                         if _j == 1 and _value == "Close" and lock_disabled:
                             placeholder_text.setBackground(QColor(80, 200, 120))
                         elif _j == 1 and _value == "Open" and lock_disabled:
                             placeholder_text.setBackground(QColor(255, 128, 128))
+                        '''
                         elif _j == 7 and _value == "Online" and lock_disabled:
                             placeholder_text.setBackground(QColor(80, 200, 120))
                         elif _j == 7 and _value == "Offline" and lock_disabled:
                             placeholder_text.setBackground(QColor(255, 128, 128))
-                    elif lock_disabled:
+                    elif cell_widget and lock_disabled:
                         placeholder_text = QTableWidgetItem(" ")
                         self._tableWidget.setItem(_i,_j, placeholder_text)
+                        '''
 
-
-        print("updating viewport")
-        if lock_disabled:
-            self._tableWidget.viewport().update()
-        print("updating buttons")
+        
         # Update auto buttons
        
         if lock_disabled: # only run if lock is disabled, so values aren't written while it is reading
@@ -445,15 +447,19 @@ class DeviceTab(QTabWidget):
                     if lock_disabled:
                         print("lock--3")
                         auto_btn_temp = self._tableWidget.cellWidget(row,5)
+                        print("lock--4")
                         if lock_disabled:
-                            print("lock--4")
+                            while lock_disabled == False:
+                                pass
                             auto_btn_temp.setText(auto_state)
                             time.sleep(0.01)
         
+        print("updating viewport")
+        if lock_disabled:
+            self._tableWidget.viewport().update()
+        print("updating buttons")
         #print("updating viewport")
         #self._tableWidget.viewport().update()
-        
-        
 
     def rest_call(self, endpoint):
         if check_port(self._ip,int(self._port)):
@@ -464,27 +470,44 @@ class DeviceTab(QTabWidget):
             
     def toggle1(self):
         #self.update_values()
+        while lock_disabled: # while lock is disabled 
+            pass
         print("toggle")
         index=(self._tableWidget.selectionModel().currentIndex())
         relay_group_number = self._relay_state[index.row()][0]
+
         self.rest_call(str(relay_group_number) + "/toggle")
 
     def close1(self):
         #self.update_values()
+        global lock_disabled
+        while lock_disabled == False:
+            pass
+        lock_disabled = False
         print("close")
         index=(self._tableWidget.selectionModel().currentIndex())
         relay_group_number = self._relay_state[index.row()][0]
+        lock_disabled = True
         self.rest_call(str(relay_group_number) + "/close")
 
     def open1(self):
         #self.update_values()
+        global lock_disabled
+        while lock_disabled == False:
+            pass
+        lock_disabled = False
         print("open")
         index=(self._tableWidget.selectionModel().currentIndex())
         relay_group_number = self._relay_state[index.row()][0]
+        lock_disabled = True
         self.rest_call(str(relay_group_number) + "/open")
 
     def toggle_auto1(self):
         #self.update_values()
+        global lock_disabled
+        while lock_disabled == False:
+            pass
+        lock_disabled = False
         print("auto")
         index=(self._tableWidget.selectionModel().currentIndex())
         
@@ -492,9 +515,11 @@ class DeviceTab(QTabWidget):
         auto_btn = self._tableWidget.cellWidget(index.row(),5)
         if auto_btn.text() == "On":
             auto_btn.setText("Off")
+            lock_disabled = True
             self.rest_call(str(relay_group_number) + "/auto=off")
         else:
             auto_btn.setText("On")
+            lock_disabled = True
             self.rest_call(str(relay_group_number) + "/auto=on")
         
 
@@ -529,6 +554,8 @@ def rest_server():#widget):
             try:
                 if tab_index > 0:
                     global lock_disabled
+                    while lock_disabled == False:
+                        pass
                     lock_disabled = False
                     print("LOCKED")
                     print("connecting5 TAB SWITCH INDICATOR = " + str(widget.tab_group.tab_switch_indicator))
@@ -536,6 +563,7 @@ def rest_server():#widget):
                     print("connecting6")
                     print("connecting7")
                     lock_disabled = True
+                    time.sleep(0.05)
                     print("UNLOCKED")
                     current_tab.update_values()
             except:
