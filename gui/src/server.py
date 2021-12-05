@@ -19,13 +19,6 @@ import socket
 import ipaddress
 
 # Global Variables
-headers = ['IP Address','Port Number','Host Name','Open','Delete']
-data = [ # default
-    ["10.6.131.127", "5000", "syscomp-rpi-1.amd.com"]
-]
-
-relay_state_global = []
-widget = []
 window_width = 1400
 window_height = 620
 
@@ -34,6 +27,7 @@ class Widget(QMainWindow):
     #Constructor
     def __init__(self, app, parent=None):
         super().__init__()
+
         self.app = app 
         self.relay_status = {} # Dictionary containing state of the Raspberry Pi 4
         self.init_gui(window_width,window_height)
@@ -62,6 +56,11 @@ class TabGroup(QWidget):
         super(QWidget, self).__init__(parent)
         # Initialize tab elements such as buttons, text ect.
         self.init_tab()
+
+        self.headers = ['IP Address','Port Number','Host Name','Open','Delete']
+        self.data = [ # default
+            ["10.6.131.127", "5000", "syscomp-rpi-1.amd.com"]
+        ]
 
         # Main Contents, Table layout
         # Row 1
@@ -129,22 +128,22 @@ class TabGroup(QWidget):
         self.table_widget.setEditTriggers(QTableWidget.NoEditTriggers) # MAKE CELLS READ ONLY
 
         # Row count
-        self.table_widget.setRowCount(len(data)) 
+        self.table_widget.setRowCount(len(self.data)) 
         self.column_count = 5
         self.table_widget.setColumnCount(self.column_count)  
         self.table_widget.setStyleSheet("selection-background-color: #ECECEC; selection-color: #000000;");
         
         # Initialize table header
-        for i, header in enumerate(headers):
+        for i, header in enumerate(self.headers):
             header_text = QTableWidgetItem()
             header_text.setText(header)
             self.table_widget.setHorizontalHeaderItem(i,header_text)
 
         # Populate table data and buttons
-        for i, row in enumerate(data):
+        for i, row in enumerate(self.data):
             for j, value in enumerate(row): self.table_widget.setItem(i,j, QTableWidgetItem(value))
-        for row in range(len(data)): self.add_button(row,self.column_count-2,"Open", self.open_device)
-        for row in range(len(data)): self.add_button(row,self.column_count-1,"Delete", self.delete_row)
+        for row in range(len(self.data)): self.add_button(row,self.column_count-2,"Open", self.open_device)
+        for row in range(len(self.data)): self.add_button(row,self.column_count-1,"Delete", self.delete_row)
         
         # Set table to auto-size to window width
         headerView = QHeaderView(QtCore.Qt.Horizontal, self.table_widget)
@@ -155,7 +154,7 @@ class TabGroup(QWidget):
     def delete_row(self):
         # Deletes a row based on currently selected row on table
         index=(self.table_widget.selectionModel().currentIndex())
-        data.pop(index.row())
+        self.data.pop(index.row())
         self.table_widget.removeRow(index.row())
 
     def add_device(self):
@@ -169,14 +168,14 @@ class TabGroup(QWidget):
             except: # Set host name via text entry
                 host_name = self.field_host_name.text()
 
-            data.append([ip,port,host_name])
-            self.table_widget.setRowCount(len(data)) 
+            self.data.append([ip,port,host_name])
+            self.table_widget.setRowCount(len(self.data)) 
 
-            for i, row in enumerate(data):
+            for i, row in enumerate(self.data):
                     for j, value in enumerate(row): 
                         self.table_widget.setItem(i,j, QTableWidgetItem(value))
-            self.add_button(len(data)-1,self.column_count-2,"Open", self.open_device)
-            self.add_button(len(data)-1,self.column_count-1,"Delete", self.delete_row)
+            self.add_button(len(self.data)-1,self.column_count-2,"Open", self.open_device)
+            self.add_button(len(self.data)-1,self.column_count-1,"Delete", self.delete_row)
         else:
             msg = QMessageBox()
             msg.setWindowTitle("Notification")
@@ -192,9 +191,9 @@ class TabGroup(QWidget):
 
     def open_device(self):
         index=(self.table_widget.selectionModel().currentIndex())
-        if check_port(data[index.row()][0],int(data[index.row()][1])):
-            device_tab = DeviceTab(self.tabs,index.row())
-            self.tabs.addTab(device_tab,data[index.row()][0] + ":" + data[index.row()][1])
+        if check_port(self.data[index.row()][0],int(self.data[index.row()][1])):
+            device_tab = DeviceTab(self.tabs,index.row(), self.data)
+            self.tabs.addTab(device_tab,self.data[index.row()][0] + ":" + self.data[index.row()][1])
             self.tabs.setCurrentWidget(device_tab)
         else:
             msg = QMessageBox()
@@ -204,9 +203,9 @@ class TabGroup(QWidget):
 
 
 class DeviceTab(QTabWidget):
-    # This class creates tabs for controlling Raspberry Pi 4 via REST API calls
+    # This class creates new tabs for controlling the relay board via REST API calls
 
-    def __init__(self,tabs,row):
+    def __init__(self,tabs,row, data):
         super(DeviceTab, self).__init__()
 
         self.headers = ['Relay Group', 'Relay Status','Close','Open', 'Toggle','Auto Mode','Toggle Time','Computer Status','Description']
@@ -214,21 +213,6 @@ class DeviceTab(QTabWidget):
         for i in range(12):
             self.relay_state.append([str(i),"Open","","","","",100,"Offline","Description"])
         
-        self.relay_state2 = [ # THESE ARE DEFAULT VALUES
-            ["1", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
-            ["2", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
-            ["3", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
-            ["4", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
-            ["5", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
-            ["6", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
-            ["7", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
-            ["8", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
-            ["9", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
-            ["10", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
-            ["11", "Open", 'Close','Open','Toggle','On','100','Online','Description'],
-            ["12", "Open", 'Close','Open','Toggle','On','100','Online','Description']
-        ]
-
         # Create new tab and append to existing tab group
         self.ip = data[row][0]
         self.port = data[row][1]
@@ -294,19 +278,19 @@ class DeviceTab(QTabWidget):
         self.table_widget.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table_widget.setFocusPolicy(Qt.NoFocus);  
         self.table_widget.setEditTriggers(QTableWidget.NoEditTriggers) # Cells are read only
-
+        # Initializing rows
         self.table_widget.setRowCount(len(self.relay_state)) 
         self._COLUMN_COUNT = 9
         self.table_widget.setColumnCount(self._COLUMN_COUNT)  
         self.table_widget.setStyleSheet("selection-background-color: #ECECEC;selection-color: #000000;");
-
+        # Initializing data in table
         for _i, _header in enumerate(self.headers):
             _header_text = QTableWidgetItem()
             _header_text.setText(_header)
             self.table_widget.setHorizontalHeaderItem(_i,_header_text)
         for _i, _row in enumerate(self.relay_state):
             for _j, _value in enumerate(_row): self.table_widget.setItem(_i,_j, QTableWidgetItem(_value))
-
+        # Adding buttons
         for _row in range(len(self.relay_state)): self.add_button(_row,self._COLUMN_COUNT-7,"Close", self.close)
         for _row in range(len(self.relay_state)): self.add_button(_row,self._COLUMN_COUNT-6,"Open", self.open)
         for _row in range(len(self.relay_state)): self.add_button(_row,self._COLUMN_COUNT-5,"Toggle", self.toggle)
@@ -321,11 +305,11 @@ class DeviceTab(QTabWidget):
         self.layout.addWidget(self.table_widget,2,0,2,6)
 
     def add_button(self,row,column,text, target):
-        _btn_delete = QPushButton(self)
-        _btn_delete.setText(text)
-        _btn_delete.clicked.connect(target)
-        _btn_delete.setFont(QFont('Calibri',10))
-        self.table_widget.setCellWidget(row, column, _btn_delete)
+        btn_delete = QPushButton(self)
+        btn_delete.setText(text)
+        btn_delete.clicked.connect(target)
+        btn_delete.setFont(QFont('Calibri',10))
+        self.table_widget.setCellWidget(row, column, btn_delete)
 
     def update_values(self):
         print("-------------UPDATING")
@@ -344,12 +328,7 @@ class DeviceTab(QTabWidget):
                         placeholder_text.setBackground(QColor(80, 200, 120))
                     elif _j == 7 and _value == "Offline":
                         placeholder_text.setBackground(QColor(255, 128, 128))
-                elif cell_widget:
-                    pass
-                    #placeholder_text = QTableWidgetItem(" ")
-                    #self.table_widget.setItem(_i,_j, placeholder_text)
-        # Update auto buttons
-    
+                
         for row in range(len(self.relay_state)):
             auto_state = self.relay_state[row][5] + ""
             auto_btn_temp = self.table_widget.cellWidget(row,5)
@@ -357,29 +336,30 @@ class DeviceTab(QTabWidget):
             time.sleep(0.01)
         self.table_widget.viewport().update()
 
-    def rest_call(self, endpoint):
+    ## Rest API methods ##
+    def rest_call(self, endpoint): 
         if check_port(self.ip,int(self.port)):
             print("IP&Port is okay")
             call = "http://" + self.ip + ":" + self.port + "/" + endpoint
             print(call)
             requests.get(call, timeout=2)
-            
-    def toggle(self):
+    
+    def toggle(self): # Toggles the power button on/off
         index=(self.table_widget.selectionModel().currentIndex())
         relay_group_number = self.relay_state[index.row()][0]
         self.rest_call(str(relay_group_number) + "/toggle")
 
-    def close(self):
+    def close(self): # Closes the relay wire, turning it on
         index=(self.table_widget.selectionModel().currentIndex())
         relay_group_number = self.relay_state[index.row()][0]
         self.rest_call(str(relay_group_number) + "/close")
 
-    def open(self):
+    def open(self): # Opens the relay wire, turning it off
         index=(self.table_widget.selectionModel().currentIndex())
         relay_group_number = self.relay_state[index.row()][0]
         self.rest_call(str(relay_group_number) + "/open")
 
-    def toggle_auto(self):
+    def toggle_auto(self): # Auto mode triggers auto while computer is off
         index=(self.table_widget.selectionModel().currentIndex())
         relay_group_number = self.relay_state[index.row()][0]
         auto_btn = self.table_widget.cellWidget(index.row(),5)
@@ -465,7 +445,7 @@ def status_dict_to_list(status_dict):
         #print(relay_state_row)
     return relay_state_updated
 
-class ServerThread(QtCore.QThread):
+class ServerThread(QThread):
     def __init__(self, parent=None):
         QtCore.QThread.__init__(self)
 
@@ -488,4 +468,3 @@ if __name__ == '__main__':
     app.exec_()
     sys.exit()
    
-    
