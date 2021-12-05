@@ -62,6 +62,10 @@ class TabGroup(QWidget):
             ["10.6.131.127", "5000", "syscomp-rpi-1.amd.com"]
         ]
 
+        # Initialize Qthread for GET requests via REST API
+        self.worker_thread = ServerThread(self)
+        self.worker_thread.start()
+
         # Main Contents, Table layout
         # Row 1
         self.tab_devices.layout.addWidget(self.label_ip_address,0,0)
@@ -161,7 +165,7 @@ class TabGroup(QWidget):
         ip = self.field_ip_address.text()
         port = self.field_port_number.text()
 
-        if check_port(ip,int(port)): # Check if port and ip is open
+        if self.check_port(ip,int(port)): # Check if port and ip is open
             host_name = self.field_host_name.text()
             try: # Set host name via auto-detection
                 host_name = socket.gethostbyaddr(ip)[0]
@@ -191,9 +195,10 @@ class TabGroup(QWidget):
 
     def open_device(self):
         index=(self.table_widget.selectionModel().currentIndex())
-        if check_port(self.data[index.row()][0],int(self.data[index.row()][1])):
-            device_tab = DeviceTab(self.tabs,index.row(), self.data)
+        if self.check_port(self.data[index.row()][0],int(self.data[index.row()][1])):
+            device_tab = DeviceTab(self.tabs,index.row(), self.data, self)
             self.tabs.addTab(device_tab,self.data[index.row()][0] + ":" + self.data[index.row()][1])
+            time.sleep(1)
             self.tabs.setCurrentWidget(device_tab)
         else:
             msg = QMessageBox()
@@ -201,33 +206,49 @@ class TabGroup(QWidget):
             msg.setText("This IP & port is not online")
             temp_placeholder = msg.exec_()
 
+    def check_port(self, ip, port):
+        # Checks if the port is open
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # TCP
+            socket.setdefaulttimeout(5.0) # seconds (float)
+            result = sock.connect_ex((ip,port))
+            sock.close()
+            if result == 0: return True
+            else: return False
+        except:
+            return False
 
 class DeviceTab(QTabWidget):
     # This class creates new tabs for controlling the relay board via REST API calls
 
-    def __init__(self,tabs,row, data):
+    def __init__(self,tabs,row, data, tab_group):
         super(DeviceTab, self).__init__()
-
+         
+        # Initialize local variables
         self.headers = ['Relay Group', 'Relay Status','Close','Open', 'Toggle','Auto Mode','Toggle Time','Computer Status','Description']
         self.relay_state = []
         for i in range(12):
             self.relay_state.append([str(i),"Open","","","","",100,"Offline","Description"])
         
-        # Create new tab and append to existing tab group
+        # Obtain networking information
+        self.tab_group = tab_group
         self.ip = data[row][0]
         self.port = data[row][1]
         self.host_name = data[row][2]
-        self._init_template()
 
+        # Create new tab and append to existing tab group
+        self.lock_toggle_auto = False # Used to prevent user from spamming button
+        self.init_tab()
+        
     def set_relay_state(self, relay_state):
         if sorted(self.relay_state) == sorted(relay_state):
-            pass
+            print("skip")
         else:
+            print("updating")
             self.relay_state = relay_state
-            time.sleep(0.1)
             self.update_values()
             
-    def _init_template(self):
+    def init_tab(self):
         # Editable Fields
         self.field_ip_address = QLineEdit(self)
         self.field_ip_address.setText(self.ip)
@@ -312,7 +333,6 @@ class DeviceTab(QTabWidget):
         self.table_widget.setCellWidget(row, column, btn_delete)
 
     def update_values(self):
-        print("-------------UPDATING")
         for _i, _row in enumerate(self.relay_state):
             for _j, _value in enumerate(_row): 
                 #print("row=" + str(_i) + ": col=" + str(_j))
@@ -336,9 +356,21 @@ class DeviceTab(QTabWidget):
             time.sleep(0.01)
         self.table_widget.viewport().update()
 
+    def check_port(self, ip, port):
+        # Checks if the port is open
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # TCP
+            socket.setdefaulttimeout(5.0) # seconds (float)
+            result = sock.connect_ex((ip,port))
+            sock.close()
+            if result == 0: return True
+            else: return False
+        except:
+            return False
+
     ## Rest API methods ##
     def rest_call(self, endpoint): 
-        if check_port(self.ip,int(self.port)):
+        if self.check_port(self.ip,int(self.port)):
             print("IP&Port is okay")
             call = "http://" + self.ip + ":" + self.port + "/" + endpoint
             print(call)
@@ -369,102 +401,95 @@ class DeviceTab(QTabWidget):
         else:
             auto_btn.setText("On")
             self.rest_call(str(relay_group_number) + "/auto=on")
-        
-def rest_server():
-    # Gets a dictionary containing the state of the Raspberry Pi 4 using REST API.
-    CLOCK_RATE_SECONDS = 0.05
-    #BASE_URL = "http://10.6.131.127:5000/"
-    while True:
-        print("Current Tab:")
-        print(widget.tab_group.tabs.currentIndex())
-        tab_index = widget.tab_group.tabs.currentIndex()
-        current_tab = widget.tab_group.tabs.currentWidget()
-
-        if tab_index > 0: # Do not update dictionary if on first tab
-            _ip = current_tab.ip
-            _port = current_tab.port
-            url = "http://" + _ip + ":" + str(_port) + "/"
-            print(url)
-            if check_port(_ip,int(_port)):
-                print("_______________________________")
-                response = requests.get(url + "status-dict")
-                relay_status = response.json()
-                state_list = status_dict_to_list(relay_status)
-                try:
-                    if tab_index > 0:
-                        current_tab.set_relay_state(state_list)
-                        time.sleep(0.05)
-                except:
-                    print("EXCEPTION OCCURRED")
-                    time.sleep(1)
-            else:
-                print("No connection")
-                no_connection_text = ["Host Offline", "NA", "NA",'NA','NA','NA','NA','NA','NA']
-                connection_lost = []
-                for i in range(12):
-                    connection_lost.append(no_connection_text)
-                if tab_index > 0:
-                    current_tab.set_relay_state(connection_lost)
-            time.sleep(CLOCK_RATE_SECONDS)
-        else: time.sleep(CLOCK_RATE_SECONDS*10) 
-
-def check_port(ip, port):
-    # Checks if the port is open
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # TCP
-        #sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
-        socket.setdefaulttimeout(5.0) # seconds (float)
-        result = sock.connect_ex((ip,port))
-        sock.close()
-        if result == 0: return True
-        else: return False
-    except:
-        return False
-
-def status_dict_to_list(status_dict):
-    # Converts the returned dictionary from the REST API into a List.  This List is then used to update the status table.
-    relay_state_updated = []
-    for key in status_dict:
-        data = status_dict[key]
-        relay_group = data['PRIMARY_KEY']
-        relay_value = data['RELAY_VALUE']
-        relay_status = "Open"
-        toggle_time = data['TOGGLE_TIME_MILLIS']
-        auto_reboot_enabled = data['AUTO_REBOOT']
-        auto_mode = "Off"
-        sensor_value = data['SENSOR_VALUE']
-        description = data['DESCRIPTION']
-        computer_status = 'Offline'
-
-        if sensor_value == 1: computer_status = 'Online'
-        if auto_reboot_enabled: auto_mode = "On"
-        if relay_value: relay_status = "Close"
-
-        relay_state_row = [relay_group, relay_status, ' ',' ',' ',auto_mode,toggle_time,computer_status,description]
-        relay_state_updated.append(relay_state_row)
-        #print(relay_state_row)
-    return relay_state_updated
 
 class ServerThread(QThread):
-    def __init__(self, parent=None):
-        QtCore.QThread.__init__(self)
+    def __init__(self, tab_group):
+        QThread.__init__(self)
+        self.clock_rate_seconds = 0.01 # update every 10ms
+        self.tab_group = tab_group
 
-    def start_server(self):
-        for i in range(1,6):
-            time.sleep(1)
-            self.emit(QtCore.SIGNAL("dosomething(QString)"), str(i))
-    def run(self):
-        self.start_server()
+    def run(self): # Main function that runs when thread is called using self.start()
+        while True:
+            try:
+                tab_index = self.tab_group.tabs.currentIndex()
+                current_tab = self.tab_group.tabs.currentWidget()
+                if tab_index > 0: # Do not update dictionary if on first tab
+                    _ip = current_tab.ip
+                    _port = current_tab.port
+                    url = "http://" + _ip + ":" + str(_port) + "/"
+                    print(url)
+                    if self.check_port(_ip,int(_port)):
+                        response = requests.get(url + "status-dict")
+                        relay_status = response.json()
+                        state_list = self.status_dict_to_list(relay_status)
+                        try:
+                            if tab_index > 0:
+                                current_tab.set_relay_state(state_list)
+                                time.sleep(0.05)
+                        except:
+                            print("EXCEPTION OCCURRED")
+                            time.sleep(self.clock_rate_seconds*10)
+                    else:
+                        print("No connection")
+                        no_connection_text = ["Host Offline", "NA", "NA",'NA','NA','NA','NA','NA','NA']
+                        connection_lost = []
+                        for i in range(12):
+                            connection_lost.append(no_connection_text)
+                        if tab_index > 0:
+                            current_tab.set_relay_state(connection_lost)
+                    time.sleep(self.clock_rate_seconds)
+                else: time.sleep(self.clock_rate_seconds*10)
+            except:
+                print("EXCEPTION OCCURRED")
+                time.sleep(self.clock_rate_seconds*10)
+
+    def check_port(self, ip, port):
+        # Checks if the port is open and returns True if open, False if not open
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # TCP
+            #sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
+            socket.setdefaulttimeout(5.0) # seconds (float)
+            result = sock.connect_ex((ip,port))
+            sock.close()
+            if result == 0: return True
+            else: return False
+        except:
+            return False
+    
+    def status_dict_to_list(self, status_dict):
+        # Converts the returned dictionary from the REST API into a List.  This List is then used to update the status table.
+        relay_state_updated = []
+        for key in status_dict:
+            data = status_dict[key]
+            relay_group = data['PRIMARY_KEY']
+            relay_value = data['RELAY_VALUE']
+            relay_status = "Open"
+            toggle_time = data['TOGGLE_TIME_MILLIS']
+            auto_reboot_enabled = data['AUTO_REBOOT']
+            auto_mode = "Off"
+            sensor_value = data['SENSOR_VALUE']
+            description = data['DESCRIPTION']
+            computer_status = 'Offline'
+
+            if sensor_value == 1: computer_status = 'Online'
+            if auto_reboot_enabled: auto_mode = "On"
+            if relay_value: relay_status = "Close"
+
+            relay_state_row = [relay_group, relay_status, ' ',' ',' ',auto_mode,toggle_time,computer_status,description]
+            relay_state_updated.append(relay_state_row)
+        return relay_state_updated
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     widget = Widget(app)
-    #server = threading.Thread(target=rest_server,args=(widget,))
-    server = threading.Thread(target=rest_server)
-    server.name = "RESTThread"
-    server.setDaemon(True)
-    server.start()
     widget.show()
     app.exec_()
     sys.exit()
+    
+    #server = threading.Thread(target=rest_server,args=(widget,))
+    #server = threading.Thread(target=rest_server)
+    #server.name = "RESTThread"
+    #server.setDaemon(True)
+    #server.start()
+
    
