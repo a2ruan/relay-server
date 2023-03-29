@@ -1,5 +1,3 @@
-# This module acts as the View for the Raspberry Pi 4's pins.  This is middleware where code gets translated into hardware actions.
-
 import RPi.GPIO as GPIO
 import time
 
@@ -26,7 +24,6 @@ def set_pin(pin, state):
     Input: pin = integer corresponding to pin id
     state = integer [0~1], where 1 = set pin to ON, 0 = set pin to OFF
     '''
-    #print("setting pin")
     if state == 1:
         GPIO.setup(pin,GPIO.OUT)
         GPIO.output(pin,True)

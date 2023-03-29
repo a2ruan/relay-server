@@ -1,4 +1,0 @@
-# Read more about SSH config files: https://linux.die.net/man/5/ssh_config
-Host RPI-1
-    HostName 10.6.131.127
-    User pi
