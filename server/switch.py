@@ -7,18 +7,18 @@ class Board():
     '''
 
     switch_pair_map = {  # Key = switch pair number, Value = list containing relay pin and sensor pin respectively
-        11: [3, 5],
-        2: [7, 11],
-        3: [13, 15],
-        4: [19, 21],
-        5: [23, 29],
-        1: [33, 31],  # This is the sensor/relay pair used for testing
-        7: [37, 35],
-        8: [12, 16],
-        9: [18, 22],
-        10: [24, 26],
-        6: [32, 36],
-        12: [38, 40]
+        1: [5, 10],  # This is the sensor/relay pair used for testing
+        2: [13, 19],
+        3: [26, 29],
+        4: [33, 37],
+        5: [11, 12],
+        6: [15, 16],
+        7: [18, 21],
+        8: [22, 23],
+        9: [24, 31],
+        10: [32, 35],
+        11: [36, 40],
+        12: [38, 7]
     }
 
     def __init__(self, name):
