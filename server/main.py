@@ -27,7 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-CLOCK_RATE_SECONDS = 0.05
+CLOCK_RATE_SECONDS = 0.5
 
 def init_pins():  # Initialize relay and sensor pins to default values
     for i in Board.switch_pair_map:
@@ -38,10 +38,13 @@ def init_pins():  # Initialize relay and sensor pins to default values
         # By default, set to 0 so computer doesn't accidently reset.
         set_pin(relay_pin, 0)
 
+
+
 def update_pins(board):
     '''
     Updates the GPIO pins by reading the user-defined Board state and writing the changes to hardware.
     '''
+    print("-----")
     for switch in board.get_switches():  # iterate through each switch pair
         # Read pin id and relay state
         relay_pin = switch.get_relay_pin()
@@ -85,12 +88,14 @@ def update_pins(board):
 
         # Read and update sensor value from device
         sensor_value = get_pin(sensor_pin)
+        time.sleep(0.01)
         switch.set_sensor_value(sensor_value)
+        print(f"{sensor_pin}:{sensor_value}")
         # print("sensor value = " + str(sensor_value))
         # check if auto mode is on.  Auto mode on means that toggle should continously run if system is off.
         if reboot_enabled and sensor_value < 0.5:
             switch.set_toggle(True)
-
+        
 
 @app.get("/api/{relay_name}/{command}")
 def get2(request: Request, relay_name, command):
