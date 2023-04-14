@@ -88,8 +88,10 @@ class Relay():
         self.toggle_time_milliseconds = 500
         # records down the time that a toggle was triggered, in milliseconds
         self.toggle_time_start = float(-1)
-
+        self.sensor_power_off_counter = 0 # The number of counts that the sensor is detected as off
+        
     # Accessor methods
+    def get_sensor_power_off_counter(self): return self.sensor_power_off_counter
     def get_relay_value(self): return self.relay_value
     def get_relay_pin(self): return self.pin_relay
     def get_sensor_pin(self): return self.pin_sensor
@@ -101,6 +103,7 @@ class Relay():
     def get_toggle_time_start_milliseconds(self): return self.toggle_time_start
 
     # Modifier methods
+    def set_sensor_power_off_counter(self, count): self.sensor_power_off_counter = count
     def set_name(self, name): self.name = name
     def set_relay_value(self, relay_value): self.relay_value = relay_value
     def set_relay_pin(self, pin): self.pin_relay = pin
