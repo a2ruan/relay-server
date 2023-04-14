@@ -77,6 +77,7 @@ def update_pins(board):
             elif (current_time - toggle_time_start) >= 2*toggle_time_milliseconds:  # STAGE 3
                 # print("D")
                 switch.set_toggle(False)
+                switch.sensor_power_off_counter = 0 # Reset counter back to 0
                 switch.set_toggle_time_start_milliseconds(float(-1))
                 switch.set_relay_value(0)
 
@@ -91,9 +92,16 @@ def update_pins(board):
         time.sleep(0.01)
         switch.set_sensor_value(sensor_value)
         print(f"{sensor_pin}:{sensor_value}")
+        
+        # Start incrementing sensor value if detected as off
+        if sensor_value < 0.5 and reboot_enabled:
+            switch.sensor_power_off_counter += 1
+        else: 
+            switch.sensor_power_off_counter = 0
+            
         # print("sensor value = " + str(sensor_value))
         # check if auto mode is on.  Auto mode on means that toggle should continously run if system is off.
-        if reboot_enabled and sensor_value < 0.5:
+        if reboot_enabled and sensor_value < 0.5 and switch.sensor_power_off_counter >= 10:
             switch.set_toggle(True)
         
 
