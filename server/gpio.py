@@ -15,7 +15,8 @@ def get_pin(pin):
     Input: pin = integer corresponding to pin id
     Output: value [0-1], where 0 = OFF (open-circuit), 1 = ON (voltage detected, closed-circuit)
     '''
-    GPIO.setup(pin,GPIO.IN)
+    #GPIO.setup(pin,GPIO.IN)
+    GPIO.setup(pin,GPIO.IN, pull_up_down=GPIO.PUD_UP)
     return int(not(GPIO.input(pin))) # 0 if OFF, 1 if ON
 
 def set_pin(pin, state):
