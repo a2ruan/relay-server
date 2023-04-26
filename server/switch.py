@@ -7,11 +7,11 @@ class Board():
     '''
 
     switch_pair_map = {  # Key = switch pair number, Value = list containing relay pin and sensor pin respectively
-        1: [5, 10],  # This is the sensor/relay pair used for testing
+        1: [5, 11],  # This is the sensor/relay pair used for testing
         2: [13, 19],
         3: [26, 29],
         4: [33, 37],
-        5: [11, 12],
+        5: [10, 12],
         6: [15, 16],
         7: [18, 21],
         8: [22, 23],
